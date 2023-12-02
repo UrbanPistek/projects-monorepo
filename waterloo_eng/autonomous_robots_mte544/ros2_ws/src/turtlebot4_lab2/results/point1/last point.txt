@@ -1,0 +1,1 @@
+After measurement 112, Mean state: [-2.63636168 -0.27771406  0.3928133 ], std deviation: 0.012207053686670416

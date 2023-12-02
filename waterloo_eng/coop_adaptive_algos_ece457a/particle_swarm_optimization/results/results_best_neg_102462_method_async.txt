@@ -1,0 +1,13 @@
+Best Solution:
+value: -1.024620003284295, position: (0.04831924039010427, -0.7160854661277851)
+
+Means:
+mean velocity: 4.367719682717977, mean: 50.88585628283684
+
+Params:
+w=0.792
+c1=1.4944
+c2=1.4944
+iterations=25
+method=async
+particles=100

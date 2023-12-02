@@ -1,0 +1,1 @@
+After measurement 123, Mean state: [-1.07940824 -0.92220736 -0.85984758], std deviation: 0.05906081177784704

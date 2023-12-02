@@ -1,6 +1,0 @@
-<launch>
-
-    <node pkg="turtlesim" name="sim" type="turtlesim_node"/>
-    <node pkg="turtle_pcontrol" name="turtle_service" type="turtle_service.py" output="screen"/>
-
-</launch>

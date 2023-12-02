@@ -1,0 +1,286 @@
+Package: 0ad
+Version: 0.0.25b-1.1
+Installed-Size: 26238
+Maintainer: Debian Games Team <pkg-games-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: 0ad-data (>= 0.0.25b), a2ps, 0ad13-data, adduser (>= 2.720), 0ad-data-common (>= 0.0.25b), 0ad-data-common (<= 0.0.25b-1.1), libboost-filesystem1.74.0 (>= 1.74.0), libc6 (>= 2.33), libcurl3-gnutls (>= 7.32.0), libenet7, libfmt8 (>= 8.0.1+ds1), libgcc-s1 (>= 3.4), libgl1 | libx11-6, libgloox18 (>= 1.0.24) | libicu67 (>= 67.1-1~), libminiupnpc17 (>= 1.9.20140610), libopenal1 (>= 1.14), libpng16-16 (>= 1.6.2-1), libsdl2-2.0-0 (>= 2.0.12), libsodium23 (>= 1.0.14), libstdc++6 (>= 11), libvorbisfile3 (>= 1.1.2), libwxbase3.0-0v5, libwxgtk3.0-gtk3-0v5 (>= 3.0.5.1+dfsg), libxml2 | zlib1g (>= 1:1.2.0)
+Pre-Depends: dpkg (>= 1.15.6~)
+Description: Real-time strategy game of ancient warfare
+Homepage: https://play0ad.com/
+Description-md5: d943033bedada21853d2ae54a2578a7b
+Tag: game::strategy, interface::graphical, interface::x11, role::program,
+ uitoolkit::sdl, uitoolkit::wxwidgets, use::gameplaying,
+ x11::application
+Section: games
+Priority: optional
+Filename: pool/main/0/0ad/0ad_0.0.25b-1.1_amd64.deb
+Size: 7659616
+MD5sum: a69a83b841892af27ea296387037ffd8
+SHA256: 4e2ac5e9e4aaf5496366956fa0413c090f1a62b649f5d1ad42c081c5e57d2354
+
+Package: librte-net-sfc21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 284
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.4), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-bus-pci21 (>= 20.11), librte-bus-vdev21 (>= 20.11), librte-common-sfc-efx21 (>= 20.11), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-kvargs21 (>= 20.11), librte-mbuf21 (>= 19.08), librte-mempool21 (>= 20.11), librte-meter21 (>= 20.08), librte-net21 (>= 20.11), librte-pci21 (>= 20.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net-sfc runtime library)
+Multi-Arch: same
+Homepage: https://doc.dpdk.org/guides/nics/sfc_efx.html
+Description-md5: 6cc36008fe7d31fcdb25fe5a6edf8dde
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-sfc21_20.11.3-2_amd64.deb
+Size: 107688
+MD5sum: 9a1ff10bb200261b1b748546f76afa8c
+SHA256: e57531e04b5ef7fdc62f8cb11f159ae15cf4e039dd09348993b865a281136f63
+
+Package: librte-net-softnic21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 215
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Replaces: libdpdk16.11
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.14), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), libpcap0.8 (>= 0.9.8), librte-acl21 (>= 20.11), librte-bus-pci21 (>= 20.11), librte-bus-vdev21 (>= 20.11), librte-cryptodev21 (>= 20.11), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-eventdev21 (>= 20.08), librte-hash21 (>= 18.11), librte-ip-frag21 (>= 18.11), librte-kni21 (>= 18.11), librte-kvargs21 (>= 20.11), librte-lpm21 (>= 20.08), librte-mbuf21 (>= 20.11), librte-mempool21 (>= 20.11), librte-meter21 (>= 20.08), librte-net21 (>= 18.02), librte-pci21 (>= 20.11), librte-pipeline21 (>= 20.11), librte-port21 (>= 20.11), librte-rcu21 (>= 19.11), librte-ring21 (>= 20.11), librte-sched21 (>= 20.11), librte-table21 (>= 20.11), librte-telemetry21 (>= 19.11), librte-timer21 (>= 19.08)
+Conflicts: libdpdk0
+Breaks: libdpdk16.11
+Description: Data Plane Development Kit (librte-net-softnic runtime library)
+Multi-Arch: same
+Homepage: https://doc.dpdk.org/guides/nics/softnic.html
+Description-md5: 9ff54da6a79e4d70964f4e0fb79c0aa1
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-softnic21_20.11.3-2_amd64.deb
+Size: 87212
+MD5sum: f9439621450a50d3faf98c459af7069c
+SHA256: 12596880351a1853d06731f26575e0b3b8fc3cc0bd1ec1bfa4743f416c960aaa
+
+Package: librte-net-tap21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 137
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.28), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-bus-vdev21 (>= 20.11), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-gso21 (>= 20.11), librte-hash21 (>= 18.11), librte-kvargs21 (>= 20.11), librte-mbuf21 (>= 20.11), librte-mempool21 (>= 20.11), librte-meter21 (>= 20.08), librte-net21 (>= 20.11), librte-rcu21 (>= 19.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net-tap runtime library)
+Multi-Arch: same
+Homepage: https://doc.dpdk.org/guides/nics/tap.html
+Description-md5: be29adaccdf9b59f96346dd68e28791a
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-tap21_20.11.3-2_amd64.deb
+Size: 55892
+MD5sum: e5244b51a7392af754b2818f3040768a
+SHA256: f20cf38ea091d9e6be037a7d71cc7572053c0723b7da385f6fc11733a435fb54
+
+Package: librte-net-thunderx21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 135
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.4), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-bus-pci21 (>= 20.11), librte-bus-vdev21 (>= 20.11), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-kvargs21 (>= 20.11), librte-mbuf21 (>= 19.08), librte-mempool21 (>= 20.11), librte-meter21 (>= 20.08), librte-net21 (>= 20.11), librte-pci21 (>= 20.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net-thunderx runtime library)
+Multi-Arch: same
+Homepage: https://doc.dpdk.org/guides/nics/thunderx.html
+Description-md5: 2c689698172c4e4c369f7eb619a0c903
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-thunderx21_20.11.3-2_amd64.deb
+Size: 56868
+MD5sum: 68832860d13dce92ec5f14f5108c73e3
+SHA256: 5b8f7dd0448a57fa2aca436d52a225b1967a6b13f19aee7539618eacfc9d2e47
+
+Package: librte-net-txgbe21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 231
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.14), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-bus-pci21 (>= 20.11), librte-bus-vdev21 (>= 20.11), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-hash21 (>= 18.11), librte-kvargs21 (>= 18.08), librte-mbuf21 (>= 20.11), librte-mempool21 (>= 20.11), librte-meter21 (>= 20.08), librte-net21 (>= 20.11), librte-pci21 (>= 20.11), librte-rcu21 (>= 19.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net-txgbe runtime library)
+Multi-Arch: same
+Homepage: https://doc.dpdk.org/guides/nics/txgbe.html
+Description-md5: 33b125d4482012cad409972f973edd69
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-txgbe21_20.11.3-2_amd64.deb
+Size: 94288
+MD5sum: 2ee843e3a8923df37f5243bc694b302d
+SHA256: ae16c13d8c94088284240f43fb1165c3691740679c75399738aeced435d22cb0
+
+Package: librte-net-vdev-netvsc21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 71
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.28), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-bus-pci21 (>= 20.11), librte-bus-vdev21 (>= 20.11), librte-eal21 (>= 20.11), librte-ethdev21 (>= 17.11), librte-kvargs21 (>= 20.11), librte-mbuf21 (>= 19.08), librte-mempool21 (>= 18.05), librte-meter21 (>= 20.08), librte-net21 (>= 19.08), librte-pci21 (>= 20.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net-vdev-netvsc runtime library)
+Multi-Arch: same
+Homepage: https://dpdk.org/doc/guides/nics/vdev_netvsc.html
+Description-md5: 03d74d45660a028fbeafd2036214b440
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-vdev-netvsc21_20.11.3-2_amd64.deb
+Size: 33432
+MD5sum: e0fd49e9f76bc5e4e9e5b0b91d11407c
+SHA256: 207166fb4c4b14b4664c83afbdf5e7a4a875659ed729a0118fd76959295d843e
+
+Package: librte-net-vhost21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 83
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.4), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-bus-pci21 (>= 20.11), librte-bus-vdev21 (>= 20.11), librte-cryptodev21 (>= 18.05), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-hash21 (>= 18.11), librte-kvargs21 (>= 20.11), librte-mbuf21 (>= 19.08), librte-mempool21 (>= 20.11), librte-meter21 (>= 20.08), librte-net21 (>= 18.02), librte-pci21 (>= 20.11), librte-rcu21 (>= 19.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11), librte-vhost21 (>= 20.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net-vhost runtime library)
+Multi-Arch: same
+Homepage: https://dpdk.org/doc/guides/nics/vhost.html
+Description-md5: 1553435c32c39cf08a3670ed955b14aa
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-vhost21_20.11.3-2_amd64.deb
+Size: 37612
+MD5sum: 6ac5ad4f233692056c2be57746c280a9
+SHA256: 87c1cc89b14bf0228a84b131ccccb93c90ed00d8b5e69c8045cf5a2a9db4ccac
+
+Package: librte-net-virtio21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 183
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.28), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-bus-pci21 (>= 20.11), librte-bus-vdev21 (>= 20.11), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-kvargs21 (>= 20.11), librte-mbuf21 (>= 19.08), librte-mempool21 (>= 20.11), librte-meter21 (>= 20.08), librte-net21 (>= 20.11), librte-pci21 (>= 20.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net-virtio runtime library)
+Multi-Arch: same
+Homepage: https://dpdk.org/doc/guides/nics/virtio.html
+Description-md5: 600c74f803be61be54f2e978cc2d55a6
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-virtio21_20.11.3-2_amd64.deb
+Size: 80612
+MD5sum: ba5d46169e68462c0e7abce6997bb77a
+SHA256: 29b9f7948cd5d9df5607dfad7952ba2db5b01cce7d56f8d05753167a06e8ad81
+
+Package: librte-net-vmxnet3-21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 103
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.14), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-bus-pci21 (>= 20.11), librte-bus-vdev21 (>= 20.11), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-kvargs21 (>= 18.08), librte-mbuf21 (>= 19.11), librte-mempool21 (>= 20.11), librte-meter21 (>= 20.08), librte-net21 (>= 18.05), librte-pci21 (>= 20.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net-vmxnet3 runtime library)
+Multi-Arch: same
+Homepage: https://dpdk.org/doc/guides/nics/vmxnet3.html
+Description-md5: 3e02b0e9c0145d04826f27219585530f
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net-vmxnet3-21_20.11.3-2_amd64.deb
+Size: 45040
+MD5sum: b2e1d78e5adbc283e1ddce8355480af0
+SHA256: 4fd6a220819dec3bc8eb79e9ebc8c3aaf934bf9031a7e2be1af86a82377a3585
+
+Package: librte-net21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 71
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.4), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-eal21 (>= 20.11), librte-kvargs21 (>= 18.08), librte-mbuf21 (>= 20.11), librte-mempool21 (>= 20.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Conflicts: libdpdk0
+Description: Data Plane Development Kit (librte-net runtime library)
+Multi-Arch: same
+Homepage: https://dpdk.org/doc/guides/prog_guide/overview.html?highlight=librte_net#librte-net
+Description-md5: 7ffc78e3078b40286664736d587d8ff7
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-net21_20.11.3-2_amd64.deb
+Size: 34552
+MD5sum: af4813b9811748da1ee4a9d9a66e7316
+SHA256: 3e30c1c5f11d916f0ad3873dd3a435a3e06991dd95a988c2dce80696523e8258
+
+Package: librte-node21
+Source: dpdk
+Version: 20.11.3-2
+Installed-Size: 207
+Maintainer: Debian DPDK Maintainers <pkg-dpdk-devel@lists.alioth.debian.org>
+Architecture: amd64
+Depends: libbsd0 (>= 0.0), libc6 (>= 2.4), libfdt1 (>= 1.6.0), libnuma1 (>= 2.0.11), librte-cryptodev21 (>= 18.05), librte-eal21 (>= 20.11), librte-ethdev21 (>= 20.11), librte-graph21 (>= 20.11), librte-hash21 (>= 18.11), librte-kvargs21 (>= 18.08), librte-lpm21 (>= 20.11), librte-mbuf21 (>= 19.11), librte-mempool21 (>= 18.05), librte-meter21 (>= 20.08), librte-net21 (>= 18.02), librte-rcu21 (>= 19.11), librte-ring21 (>= 20.08), librte-telemetry21 (>= 19.11)
+Description: Data Plane Development Kit (librte-node runtime library)
+Multi-Arch: same
+Homepage: https://doc.dpdk.org/guides/prog_guide/graph_lib.html
+Description-md5: 3ff97126eae0de1a5bba78df0750b273
+Section: libs
+Priority: optional
+Filename: pool/main/d/dpdk/librte-node21_20.11.3-2_amd64.deb
+Size: 61164
+MD5sum: 182d8bd8ba380ad8b8cf82ba103e6a29
+SHA256: 2d071fe170e29220ab14262900b4f357b5c177c1eaa01953cc85c4f9478e9f4f
+
+Package: gopass
+Version: 1.5.0-1
+Installed-Size: 2354
+Maintainer: Alexandre Viau <aviau@debian.org>
+Architecture: amd64
+Depends: gnupg2 | gnupg, tree
+Recommends: git
+Suggests: bash-completion
+Description: pass implementation in Go
+Homepage: https://github.com/aviau/gopass
+Built-Using: golang-1.16 (= 1.16.9-2), golang-barcode (= 0.0~git20140830-2), golang-github-mattn-go-colorable (= 0.1.8-1), golang-github-mattn-go-isatty (= 0.0.13-1), golang-github-mgutz-ansi (= 0.0~git20200706.d51e80e-1), golang-github-pquerna-otp (= 1.0.0+git20170913.6.c70cbf6-4), golang-golang-x-sys (= 0.0~git20210806.e5e7981-1), golang-golang-x-term (= 0.0~git20210615.6886f2d-1)
+Description-md5: a5b71579a865850b5beaea543b0e6a57
+Section: admin
+Priority: extra
+Filename: pool/main/g/gopass/gopass_1.5.0-1_amd64.deb
+Size: 793940
+MD5sum: cc382c5487ee04d45c1e13706efc47a1
+SHA256: 554ffaf398e3dff02c11f995b360914cc934e55f3700635af2f66a4a44cf1fee
+
+Package: gopchop
+Source: gopchop (1.1.8-7)
+Version: 1.1.8-7+b1
+Installed-Size: 407
+Maintainer: John R. Hogerhuis <jhoger@pobox.com>
+Architecture: amd64
+Depends: libatk1.0-0 (>= 1.12.4), libc6 (>= 2.14), libgcc-s1 (>= 3.0), libgdk-pixbuf-2.0-0 (>= 2.22.0), libglib2.0-0 (>= 2.12.0), libgtk2.0-0 (>= 2.8.0), libmpeg2-4 (>= 0.5.1), libstdc++6 (>= 5), libx11-6, libxext6, libxml2 (>= 2.7.4), libxv1
+Description: fast, lossless cuts-only editor for MPEG2 video files
+Homepage: http://gopchop.sourceforge.net
+Description-md5: c19dbf02bbcc6e158a2b0e33aa0bc583
+Tag: hardware::storage:dvd, implemented-in::c, implemented-in::c++,
+ interface::graphical, interface::x11, role::program, uitoolkit::gtk,
+ use::editing, works-with::audio, works-with::video, x11::application
+Section: video
+Priority: optional
+Filename: pool/main/g/gopchop/gopchop_1.1.8-7+b1_amd64.deb
+Size: 124952
+MD5sum: 0af72ed898ce2030135d8daab2a3b745
+SHA256: 2c4c01b81851b0ac6cf656e67e7650e3fb6b4507d91b7664d547040c70c4c71c
+
+Package: gopher
+Version: 3.0.17.3+nmu1
+Installed-Size: 276
+Maintainer: John Goerzen <jgoerzen@complete.org>
+Architecture: amd64
+Provides: gopher-client
+Depends: libc6 (>= 2.14), libncurses6 (>= 6), libtinfo6 (>= 6)
+Description: Distributed Hypertext Client, Gopher protocol
+Description-md5: 29e09f999292f4024424cd31dc6bbc0b
+Tag: interface::text-mode, network::client, protocol::gopher, role::program,
+ uitoolkit::ncurses
+Section: net
+Priority: optional
+Filename: pool/main/g/gopher/gopher_3.0.17.3+nmu1_amd64.deb
+Size: 110940
+MD5sum: 8d4314c93bee1efb8afede79a2adcba8
+SHA256: bf476c409cfda9f6e32c9177e48cb0e93ac7d6870e3738c57dbfb82ce25f5a33

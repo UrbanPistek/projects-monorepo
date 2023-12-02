@@ -1,0 +1,14 @@
+ros_catkin_ws/build
+ros_catkin_ws/devel
+.catkin_workspace
+*.asv
+*.png
+ros2_ws/install
+ros2_ws/log
+ros2_ws/build
+ros2_ws/src/examples
+
+assignments/venv
+venv
+__pycache__
+.idea

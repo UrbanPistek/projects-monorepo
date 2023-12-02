@@ -1,0 +1,61 @@
+Benchmarking Results:
+
+Command: 
+
+hyperfine --warmup 10 --min-runs 25 'cargo run --release -- --raw-linux data/Linux_2k_ext.log --to-parse "Jun 23 23:30:05 combo sshd(pam_unix)[26190]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=218.22.3.51  user=root" --before "rhost=<*> user=root" --after "session opened" --cutoff 100 --num-threads 2 --single-map'
+
+Single Thread:
+  Time (mean ± σ):     662.2 ms ±   6.6 ms    [User: 644.4 ms, System: 17.5 ms]
+  Range (min … max):   652.6 ms … 676.5 ms    25 runs
+
+Multiple Threads - Separate HashMap:
+  
+  => threads = 2: 
+  Time (mean ± σ):     429.6 ms ±  50.3 ms    [User: 735.5 ms, System: 23.3 ms]
+  Range (min … max):   378.6 ms … 532.5 ms    25 runs
+  
+  => threads = 4:
+  Time (mean ± σ):     309.9 ms ±  41.2 ms    [User: 863.6 ms, System: 28.6 ms]
+  Range (min … max):   236.8 ms … 411.3 ms    25 runs
+
+  => threads = 6:
+  Time (mean ± σ):     256.7 ms ±  25.2 ms    [User: 895.3 ms, System: 32.4 ms]
+  Range (min … max):   208.9 ms … 309.5 ms    25 runs
+
+  => threads = 8:
+  Time (mean ± σ):     272.9 ms ±  27.8 ms    [User: 1100.9 ms, System: 40.9 ms]
+  Range (min … max):   216.7 ms … 303.3 ms    25 runs
+
+  => threads = 10:
+  Time (mean ± σ):     268.2 ms ±  18.3 ms    [User: 1347.1 ms, System: 47.2 ms]
+  Range (min … max):   221.7 ms … 287.8 ms    25 runs
+
+  => threads = 12:
+  Time (mean ± σ):     264.5 ms ±  18.9 ms    [User: 1413.8 ms, System: 55.1 ms]
+  Range (min … max):   217.6 ms … 284.2 ms    25 runs
+
+Multiple Threads - Concurrent HashMap:
+  
+  => threads = 2: 
+  Time (mean ± σ):     462.0 ms ±  43.2 ms    [User: 801.3 ms, System: 23.1 ms]
+  Range (min … max):   426.3 ms … 558.2 ms    25 runs
+  
+  => threads = 4:
+  Time (mean ± σ):     323.5 ms ±  31.9 ms    [User: 937.0 ms, System: 23.6 ms]
+  Range (min … max):   278.0 ms … 362.0 ms    25 runs
+
+  => threads = 6:
+  Time (mean ± σ):     281.2 ms ±  32.4 ms    [User: 1036.2 ms, System: 32.7 ms]
+  Range (min … max):   229.6 ms … 342.4 ms    25 runs
+
+  => threads = 8:
+  Time (mean ± σ):     279.7 ms ±  29.8 ms    [User: 1199.8 ms, System: 39.1 ms]
+  Range (min … max):   225.4 ms … 314.6 ms    25 runs
+
+  => threads = 10:
+  Time (mean ± σ):     260.6 ms ±  16.1 ms    [User: 1227.0 ms, System: 49.0 ms]
+  Range (min … max):   211.0 ms … 282.9 ms    25 runs
+
+  => threads = 12:
+  Time (mean ± σ):     244.9 ms ±  21.2 ms    [User: 1224.7 ms, System: 50.2 ms]
+  Range (min … max):   198.3 ms … 272.9 ms    25 runs
