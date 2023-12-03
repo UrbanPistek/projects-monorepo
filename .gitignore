@@ -178,3 +178,6 @@ Cargo.lock
 media
 blender
 *.mp4
+*.png
+*.jpg
+
