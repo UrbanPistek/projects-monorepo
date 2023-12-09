@@ -11,6 +11,7 @@ fn pdf(x: f64, y: f64) -> f64 {
 }
 
 // Public function to demo plot
+#[allow(dead_code)]
 pub fn plot_demo_2d() -> Result<(), Box<dyn std::error::Error>> {
 
     // Configure chart backend
@@ -50,7 +51,7 @@ pub fn plot_demo_2d() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 // Public function to demo plot
-pub fn plot_opt_2d() -> Result<(), Box<dyn std::error::Error>> {
+pub fn plot_opt_2d(x: f32, y: f32) -> Result<(), Box<dyn std::error::Error>> {
 
     // Configure chart backend
     let root = BitMapBackend::new("plot_2d_multimodal.png", (640, 480)).into_drawing_area();
@@ -59,7 +60,7 @@ pub fn plot_opt_2d() -> Result<(), Box<dyn std::error::Error>> {
 
     // After this point, we should be able to construct a chart context
     let mut chart_context = ChartBuilder::on(&root)
-        .caption("2d Multimodel Plot", ("sans-serif", 40).into_font())
+        .caption("SA Result", ("sans-serif", 40).into_font())
         .x_label_area_size(50) // Add buffer area to x axis
         .y_label_area_size(50) // Add buffer area to y axis
         .build_cartesian_2d(0f32..1.2f32, -1.5f32..2f32)?; // make a chart context
@@ -89,6 +90,18 @@ pub fn plot_opt_2d() -> Result<(), Box<dyn std::error::Error>> {
         stroke_width: 2,
     };
     chart_context.draw_series(LineSeries::new(data, pstyle)).unwrap();
+
+    // Add a single data point (x, y) to the chart
+    chart_context.draw_series(PointSeries::of_element(
+        vec![(x, y)],
+        5,
+        &RED,
+        &|c, s, st| {
+            return EmptyElement::at(c)    // We want to construct a composed element on-the-fly
+            + Circle::new((0,0),s,st.filled()) // At this point, the new pixel coordinate is established
+            + Text::new(format!("{:?}", c), (10, 0), ("sans-serif", 10).into_font());
+        },
+    ))?;
 
     root.present()?;
     Ok(())
