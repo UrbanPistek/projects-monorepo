@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mqtt-broker 
+    restart: unless-stopped
+    ports:
+      - "1883:1883" # MQTT Standard Port
+      # - "8883:8883" # MQTT SSL Port
+    volumes:
+      - ./config:/mosquitto/config
+      - ./data:/mosquitto/data
+      - ./log:/mosquitto/log
+
