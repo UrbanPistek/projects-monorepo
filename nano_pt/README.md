@@ -74,6 +74,38 @@ Start the broker:
 docker compose --file mqtt_broker.yml up -d
 ```
 
+[MQTT CLI](https://www.hivemq.com/blog/mqtt-cli/)
+[Hive MQTT CLI](https://github.com/hivemq/mqtt-cli)
+
+Install:
+
+```
+wget https://github.com/hivemq/mqtt-cli/releases/download/v4.25.0/mqtt-cli-4.25.0.deb
+sudo apt install ./mqtt-cli-4.25.0.deb
+```
+
+### Use MQTT CLI
+
+Terminal 1:
+
+```
+mqtt sub -t test -h 0.0.0.0 -p 1883
+```
+
+Terminal 2:
+
+```
+mqtt pub -t test -m "hi" -h 0.0.0.0 -p 1883
+```
+
+### eclipse-mosquitto
+
+[Documentation](https://mosquitto.org/documentation/)
+
+Install: `sudo apt-get install mosquitto`
+
+
+
 ### Resources
 
 [ESP32 Dev Board](https://www.adafruit.com/product/3269)
