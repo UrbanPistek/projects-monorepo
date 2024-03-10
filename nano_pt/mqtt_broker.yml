@@ -6,8 +6,7 @@ services:
     container_name: mqtt-broker 
     restart: unless-stopped
     ports:
-      - "127.0.0.1:1883:1883" # MQTT Standard Port
-      - "1882:1882"
+      - "1882:1883" # MQTT Standard Port
       # - "8883:8883" # MQTT SSL Port
     volumes:
       - ./config:/mosquitto/config

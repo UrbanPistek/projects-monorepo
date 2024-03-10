@@ -3,5 +3,5 @@ data
 log
 
 # MQTT Password
-# config/mosquitto.passwd
+config/mosquitto.passwd
 

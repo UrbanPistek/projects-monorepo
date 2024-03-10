@@ -89,22 +89,36 @@ sudo apt install ./mqtt-cli-4.25.0.deb
 Terminal 1:
 
 ```
-mqtt sub -t test -h 0.0.0.0 -p 1883
+mqtt sub -t test -h 0.0.0.0 -p 1883 -u <user> -pw <password>
 ```
 
 Terminal 2:
 
 ```
-mqtt pub -t test -m "hi" -h 0.0.0.0 -p 1883
+mqtt pub -t test -m "hi" -h 0.0.0.0 -p 1883 -u <user> -pw <password>
 ```
 
 ### eclipse-mosquitto
 
 [Documentation](https://mosquitto.org/documentation/)
 
-Install: `sudo apt-get install mosquitto`
+Install: `sudo apt-get install mosquitto mosquitto-clients`
 
+Create password for mqtt:
 
+```
+sudo mosquitto_passwd -c ./config/mosquitto.passwd <user_name>
+```
+
+Subscribe
+```
+mosquitto_sub -h 127.0.0.1 -p 1883 -t test -u <user> -P <password> 
+```
+
+Publish
+```
+mosquitto_pub -h 127.0.0.1 -p 1883 -t test -m 0xFF -u <user> -P <password> 
+```
 
 ### Resources
 
