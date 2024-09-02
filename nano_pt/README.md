@@ -120,6 +120,12 @@ Publish
 mosquitto_pub -h 127.0.0.1 -p 1883 -t test -m 0xFF -u <user> -P <password> 
 ```
 
+## Raspberry Pi Pico
+
+### Development with Rust
+
+[Pico Rust HAL](https://github.com/rp-rs/rp-hal)
+
 ### Resources
 
 [ESP32 Dev Board](https://www.adafruit.com/product/3269)
