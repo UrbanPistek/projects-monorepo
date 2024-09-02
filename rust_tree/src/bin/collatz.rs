@@ -27,5 +27,6 @@ fn test_collatz_length() {
 fn main() {
     let n: i32 = 8;
     let l: u32 = collatz_length(n);
+    println!("n: {n:#?}"); // # adds pretty printing
     println!("length for n={}: {}", n, l);
 }
