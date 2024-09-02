@@ -1,45 +1,72 @@
-fn transpose(matrix: [[i32; 3]; 3]) -> [[i32; 3]; 3] {
+fn transpose(matrix: &Vec<Vec<i32>>) -> Vec<Vec<i32>> {
     
     let m = matrix.len();
     let n = matrix[0].len();
     
     // Initialize empty
-    let mut transposed: [[i32; 3]; 3] = [[0; 3]; 3];
-    for i in 0..m {
-        for j in 0..n {
+    // Shape needs to be inverted to handle a rectangular matrix as well 
+    let mut transposed: Vec<Vec<i32>> = vec![vec![0; m]; n];
+    for i in 0..n {
+        for j in 0..m {
             transposed[i][j] = matrix[j][i];
         }
     }
-
     return transposed;
 }
 
 #[test]
-fn test_transpose() {
-    let matrix = [
-        [101, 102, 103], //
-        [201, 202, 203],
-        [301, 302, 303],
+fn test_transpose_3d() {
+    let matrix: Vec<Vec<i32>> = vec![
+        vec![1, 2, 3],
+        vec![4, 5, 6],
+        vec![7, 8, 9],
     ];
-    let transposed = transpose(matrix);
-    assert_eq!(
-        transposed,
-        [
-            [101, 201, 301], //
-            [102, 202, 302],
-            [103, 203, 303],
-        ]
-    );
+    let transposed = transpose(&matrix);
+    let output: Vec<Vec<i32>> = vec![
+        vec![1, 4, 7],
+        vec![2, 5, 8],
+        vec![3, 6, 9],
+    ];
+    assert_eq!(transposed, output);
+}
+
+#[test]
+fn test_transpose_2d() {
+    let matrix: Vec<Vec<i32>> = vec![
+        vec![1, 2],
+        vec![4, 5],
+    ];
+    let transposed = transpose(&matrix);
+    let output: Vec<Vec<i32>> = vec![
+        vec![1, 4],
+        vec![2, 5],
+    ];
+    assert_eq!(transposed, output);
+}
+
+#[test]
+fn test_transpose_rect() {
+    let matrix: Vec<Vec<i32>> = vec![
+        vec![1, 2, 7],
+        vec![4, 5, 8],
+    ];
+    let transposed = transpose(&matrix);
+    let output: Vec<Vec<i32>> = vec![
+        vec![1, 4],
+        vec![2, 5],
+        vec![7, 8]
+    ];
+    assert_eq!(transposed, output);
 }
 
 fn main() {
-    let matrix = [
-        [101, 102, 103], // <-- the comment makes rustfmt add a newline
-        [201, 202, 203],
-        [301, 302, 303],
+    let matrix: Vec<Vec<i32>> = vec![
+        vec![1, 2, 3],
+        vec![4, 5, 6],
+        vec![7, 8, 9],
     ];
 
-    println!("matrix: {:#?}", matrix);
-    let transposed = transpose(matrix);
-    println!("transposed: {:#?}", transposed);
+    println!("matrix: {:?}", matrix);
+    let transposed = transpose(&matrix);
+    println!("transposed: {:?}", transposed);
 }
