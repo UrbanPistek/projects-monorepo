@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 
 // Define type which is a pointer to a node
 type SubTree<T> = Option<Box<Node<T>>>;
@@ -86,6 +87,59 @@ impl<T: Ord> BST<T> {
         // Report a failure
         Err(InsertResult::Failure)
     }
+
+    // Iteratively find the height of the tree
+    fn height(&mut self) -> Result<u32, ()> {
+    
+        // Base case, its only the root
+        if self.size == 1 {
+            return Ok(1);
+        }
+
+        // Create queue for breath-first traversal
+        // Store address of the subtree
+        let mut queue: VecDeque<&SubTree<T>> = VecDeque::new();
+
+        // Initialize
+        let mut height: u32 = 0;
+        queue.push_front(&self.root);
+        
+        // Main loop
+        loop {
+
+            // Increment height
+            let mut node_count = queue.len();
+            if node_count == 0 { break };
+                
+            height += 1;
+        
+            // Empty all items in the queue
+            // on the current layer
+            while node_count > 0 {
+
+                // Explicitly unwrap this
+                let node_ref = match queue.pop_front() {
+                    Some(val) => val, // Return the reference 
+                    None => &None
+                }; 
+                let node = node_ref.as_ref().unwrap();
+
+                // Push reference to next nodes if they exist
+                if !node.left.is_none(){
+                    queue.push_front(&node.left);
+                }
+                if !node.right.is_none(){
+                    queue.push_front(&node.right);
+                }
+                
+                node_count -= 1;
+            }
+            
+        }
+        
+        return Ok(height);
+
+    }
 }
 
 // Unit tests for the BST
@@ -105,6 +159,45 @@ mod tests {
         assert_eq!(res, InsertResult::Success); // Should succeed
         assert_eq!(bst.size, 2); // Tree size should be 1 (initial + 1 inserts)
     }
+
+    #[test]
+    fn test_height_1() {
+
+        let mut bst = BST::new(10);
+        assert_eq!(bst.height().unwrap(), 1);
+    }
+
+    #[test]
+    fn test_height_2() {
+
+        let mut bst = BST::new(10);
+        bst.insert(5).unwrap();
+        assert_eq!(bst.height().unwrap(), 2);
+    }
+    
+    #[test]
+    fn test_height_3() {
+
+        let mut bst = BST::new(10);
+        bst.insert(5).unwrap();
+        bst.insert(15).unwrap();
+        bst.insert(3).unwrap();
+        bst.insert(7).unwrap();
+        assert_eq!(bst.height().unwrap(), 3);
+    }
+
+    #[test]
+    fn test_height_4() {
+
+        let mut bst = BST::new(10);
+        bst.insert(5).unwrap();
+        bst.insert(15).unwrap();
+        bst.insert(3).unwrap();
+        bst.insert(7).unwrap();
+        bst.insert(6).unwrap();
+        assert_eq!(bst.height().unwrap(), 4);
+    }
+
 }
 
 fn main() {
@@ -124,4 +217,5 @@ fn main() {
     
     println!("{:#?}", bst);
     println!("bst size: {:?}", bst.size);
+    println!("bst height: {:?}", bst.height().unwrap());
 }
