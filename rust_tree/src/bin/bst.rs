@@ -1,4 +1,7 @@
+// TODO: Change from supporting generic types <T> to just i32
 use std::cmp::Ordering;
+use std::fmt::Debug;
+use std::any::Any;
 use std::collections::VecDeque;
 
 // Define type which is a pointer to a node
@@ -142,6 +145,56 @@ impl<T: Ord> BST<T> {
     }
 }
 
+// Needs to be defined externally
+// Helper function to get matrix form of a bst
+fn get_matrix_recursive<T: Ord> (matrix: &mut Vec<Vec<T>>, root: SubTree<T>, col: usize, row: usize, height: u32) -> () {
+
+    let node = *(root.unwrap());
+
+    // Store the value of the node
+    matrix[row][col] = node.value;
+
+    // Recursive base case
+    if node.left.is_none() && node.right.is_none() {
+        return
+    }
+
+    // Recurse
+    let col_inc = 2_u32.pow(height-2);
+    let l = col-col_inc as usize;
+    let r = col+col_inc as usize;
+    get_matrix_recursive(matrix, node.left, l, row+1, height-1);
+    get_matrix_recursive(matrix, node.right, r, row+1, height-1);
+
+}
+
+// Pretty display of a bst
+// Note: Trouble handling comparisons of generic types to 0
+/*
+fn print_bst<T: Any + std::fmt::Debug>(bst_matrix: Vec<Vec<T>>) {
+    // Get dimensions of the matrix
+    let m = bst_matrix.len();
+    let n = bst_matrix[0].len();
+
+    for i in 0..m {
+        for j in 0..n {
+            // Attempt to downcast to i32, u32, etc.
+            if let Some(&value) = bst_matrix[i].get(j).and_then(|v| v.as_any().downcast_ref::<i32>())
+                .or_else(|| bst_matrix[i].get(j).and_then(|v| v.as_any().downcast_ref::<u32>())) {
+                if *value == 0 {
+                    print!(" ");  // Print space for 0
+                } else {
+                    print!("{:?}", value);  // Print the integer value
+                }
+            } else {
+                return
+            }
+        }
+        println!();
+    }
+}
+*/
+
 // Unit tests for the BST
 #[cfg(test)]
 mod tests {
@@ -218,4 +271,22 @@ fn main() {
     println!("{:#?}", bst);
     println!("bst size: {:?}", bst.size);
     println!("bst height: {:?}", bst.height().unwrap());
+
+    // test show
+    let h: u32 = bst.height().unwrap();
+    let cols = 2_u32.pow(h) - 1;
+    let rows = h as usize;
+    let m = rows;
+    let n = cols as usize;
+    let mut matrix: Vec<Vec<u32>>= vec![vec![0; n]; m];
+    println!("initial matrix[{:?}, {:?}]: {:?}", m, n, matrix);
+
+    // Get the matrix form of the tree
+    let mid: f32 = (cols as f32)/2.0;
+    let i = mid.floor() as usize;
+    get_matrix_recursive(&mut matrix, bst.root, i, 0, h);
+    println!("bst matrix: {:?}", matrix);
+
+    println!("bst pretty print: ");
+    // print_bst(matrix);
 }
