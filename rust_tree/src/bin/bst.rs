@@ -1,30 +1,32 @@
 // TODO: Change from supporting generic types <T> to just i32
 use std::cmp::Ordering;
 use std::fmt::Debug;
-use std::any::Any;
 use std::collections::VecDeque;
 
 // Define type which is a pointer to a node
-type SubTree<T> = Option<Box<Node<T>>>;
+#[allow(non_camel_case_types)]
+type SubTree<i32> = Option<Box<Node<i32>>>;
 
 // Define the nodes in the tree
 #[derive(Debug)]
-struct Node<T: Ord> {
-    value: T,
-    left: SubTree<T>,
-    right: SubTree<T>,
+#[allow(non_camel_case_types)]
+struct Node<i32> {
+    value: i32,
+    left: SubTree<i32>,
+    right: SubTree<i32>,
 }
 
 // Define the BST Itself
 #[derive(Debug)]
-struct BST<T: Ord> {
-    root: SubTree<T>,
+#[allow(non_camel_case_types)]
+struct BST<i32> {
+    root: SubTree<i32>,
     size: u32,
 }
 
 // Implement the Node struct methods
-impl<T: Ord> Node<T> {
-    fn new(value: T) -> Self {
+impl Node<i32> {
+    fn new(value: i32) -> Self {
         Node {
             value,
             left: None,
@@ -42,8 +44,8 @@ enum InsertResult {
 }
 
 // Define all node-based functions
-impl<T: Ord> BST<T> {
-    fn new(value: T) -> BST<T> {
+impl BST<i32> {
+    fn new(value: i32) -> BST<i32> {
         BST {
             root: Some(Box::new(Node::new(value))),
             size: 1,
@@ -51,7 +53,7 @@ impl<T: Ord> BST<T> {
     }
 
     // Insert a value into the appropriate location in this tree using an iterative approach
-    fn insert(&mut self, value: T) -> Result<InsertResult, InsertResult> {
+    fn insert(&mut self, value: i32) -> Result<InsertResult, InsertResult> {
         // Start by referencing the root node of the tree
         let mut current = &mut self.root;
 
@@ -101,7 +103,7 @@ impl<T: Ord> BST<T> {
 
         // Create queue for breath-first traversal
         // Store address of the subtree
-        let mut queue: VecDeque<&SubTree<T>> = VecDeque::new();
+        let mut queue: VecDeque<&SubTree<i32>> = VecDeque::new();
 
         // Initialize
         let mut height: u32 = 0;
@@ -147,7 +149,7 @@ impl<T: Ord> BST<T> {
 
 // Needs to be defined externally
 // Helper function to get matrix form of a bst
-fn get_matrix_recursive<T: Ord> (matrix: &mut Vec<Vec<T>>, root: SubTree<T>, col: usize, row: usize, height: u32) -> () {
+fn get_bst_matrix_recursive (matrix: &mut Vec<Vec<i32>>, root: SubTree<i32>, col: usize, row: usize, height: u32) -> () {
 
     let node = *(root.unwrap());
 
@@ -163,15 +165,13 @@ fn get_matrix_recursive<T: Ord> (matrix: &mut Vec<Vec<T>>, root: SubTree<T>, col
     let col_inc = 2_u32.pow(height-2);
     let l = col-col_inc as usize;
     let r = col+col_inc as usize;
-    get_matrix_recursive(matrix, node.left, l, row+1, height-1);
-    get_matrix_recursive(matrix, node.right, r, row+1, height-1);
+    get_bst_matrix_recursive(matrix, node.left, l, row+1, height-1);
+    get_bst_matrix_recursive(matrix, node.right, r, row+1, height-1);
 
 }
 
 // Pretty display of a bst
-// Note: Trouble handling comparisons of generic types to 0
-/*
-fn print_bst<T: Any + std::fmt::Debug>(bst_matrix: Vec<Vec<T>>) {
+fn print_bst_matrix(bst_matrix: Vec<Vec<i32>>) {
     // Get dimensions of the matrix
     let m = bst_matrix.len();
     let n = bst_matrix[0].len();
@@ -179,9 +179,8 @@ fn print_bst<T: Any + std::fmt::Debug>(bst_matrix: Vec<Vec<T>>) {
     for i in 0..m {
         for j in 0..n {
             // Attempt to downcast to i32, u32, etc.
-            if let Some(&value) = bst_matrix[i].get(j).and_then(|v| v.as_any().downcast_ref::<i32>())
-                .or_else(|| bst_matrix[i].get(j).and_then(|v| v.as_any().downcast_ref::<u32>())) {
-                if *value == 0 {
+            if let Some(&value) = bst_matrix[i].get(j) {
+                if value == 0 {
                     print!(" ");  // Print space for 0
                 } else {
                     print!("{:?}", value);  // Print the integer value
@@ -193,7 +192,27 @@ fn print_bst<T: Any + std::fmt::Debug>(bst_matrix: Vec<Vec<T>>) {
         println!();
     }
 }
-*/
+
+// // Helper function to get matrix form of a bst
+// fn print_bst (bst: &mut BST<i32>) -> () {
+
+//     let h: u32 = bst.height().unwrap();
+//     let cols = 2_u32.pow(h) - 1;
+//     let rows = h as usize;
+//     let m = rows;
+//     let n = cols as usize;
+//     let mut matrix: Vec<Vec<i32>>= vec![vec![0; n]; m];
+//     println!("initial matrix[{:?}, {:?}]: {:?}", m, n, matrix);
+
+//     // Get the matrix form of the tree
+//     let mid: f32 = (cols as f32)/2.0;
+//     let i = mid.floor() as usize;
+//     get_bst_matrix_recursive(&mut matrix, bst.root, i, 0, h);
+//     println!("bst matrix: {:?}", matrix);
+
+//     println!("bst pretty print: ");
+//     print_bst_matrix(matrix);
+// }
 
 // Unit tests for the BST
 #[cfg(test)]
@@ -278,15 +297,15 @@ fn main() {
     let rows = h as usize;
     let m = rows;
     let n = cols as usize;
-    let mut matrix: Vec<Vec<u32>>= vec![vec![0; n]; m];
+    let mut matrix: Vec<Vec<i32>>= vec![vec![0; n]; m];
     println!("initial matrix[{:?}, {:?}]: {:?}", m, n, matrix);
 
     // Get the matrix form of the tree
     let mid: f32 = (cols as f32)/2.0;
     let i = mid.floor() as usize;
-    get_matrix_recursive(&mut matrix, bst.root, i, 0, h);
+    get_bst_matrix_recursive(&mut matrix, bst.root, i, 0, h);
     println!("bst matrix: {:?}", matrix);
 
     println!("bst pretty print: ");
-    // print_bst(matrix);
+    print_bst_matrix(matrix);
 }
