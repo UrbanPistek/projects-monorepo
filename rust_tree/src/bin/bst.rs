@@ -1,4 +1,3 @@
-// TODO: Change from supporting generic types <T> to just i32
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::collections::VecDeque;
@@ -367,7 +366,7 @@ fn main() {
         _ => panic!() // Covers all other branches
     }
     
-    println!("{:#?}", bst);
+    // println!("{:#?}", bst);
     println!("bst size: {:?}", bst.size);
     println!("bst height: {:?}", bst.height().unwrap());
 
