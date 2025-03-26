@@ -1,0 +1,18 @@
+Material:
+- 3mm Black Acrylic
+
+Laser Settings
+- 12W Laser
+- 3mm Material Distance
+- (Cut) - Red, 250 mm/min, 100% Power, x2
+- (Engrave - Deepest) - Green, 4000mm/min, 80% Power, x1
+- (Engrave - Larger Text / Symbols) - Blue, 4000mm/min, 30% Power, 1x
+- (Engrave - Shallow) - Black, 4000mm/min, 10% Power, 1x
+
+Finish
+- White Acrlyic Paint
+- Sand with at least 600 grit with water
+
+Laser Cutter
+- Creality Falcon2 12W
+
