@@ -139,3 +139,5 @@ blender
 *.png
 *.jpg
 
+
+*.vscode
