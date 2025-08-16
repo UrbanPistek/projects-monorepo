@@ -302,8 +302,8 @@ def training_loop(
 def main():
 
     # Show original model info
-    # base_model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
-    base_model = models.regnet_x_400mf(weights=RegNet_X_400MF_Weights.IMAGENET1K_V2) # Smaller model for quicker testing
+    base_model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
+    # base_model = models.regnet_x_400mf(weights=RegNet_X_400MF_Weights.IMAGENET1K_V2) # Smaller model for quicker testing
     summary(base_model, input_size=(1, 3, 224, 224), depth=3)
     
     # Load model
@@ -335,6 +335,12 @@ def main():
     )
 
     print(metrics_df.head())
+
+    # Save model
+    model.to("cpu")
+    model_save_path = f"./models/{base_model._get_name()}_tuned.pth"
+    torch.save(model, model_save_path)
+    print(f"Model saved to: {model_save_path}")
 
 if __name__ == "__main__":
     main()
