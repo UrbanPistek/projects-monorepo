@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms, models
-from torchvision.models import RegNet_Y_16GF_Weights
+from torchvision.models import RegNet_Y_16GF_Weights, RegNet_X_400MF_Weights
 from torchinfo import summary
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
@@ -58,18 +58,17 @@ class TrainingDataset(Dataset):
             image = self.transform(image)
 
         # Return numeric label as tensor
-        label = torch.tensor(row['label_encoded'], dtype=torch.int8)
+        label = torch.tensor(row['label_encoded'], dtype=torch.long)
         return image, label
 
 
-def load_model(num_classes):
-    model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
-    num_features = model.fc.in_features
-    model.fc = nn.Linear(num_features, num_classes)
+def load_model(num_classes, base_model: models.RegNet):
+    num_features = base_model.fc.in_features
+    base_model.fc = nn.Linear(num_features, num_classes)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = optim.Adam(base_model.parameters(), lr=0.0001)
 
-    return model, criterion, optimizer
+    return base_model, criterion, optimizer
 
 
 def load_transforms():
@@ -303,14 +302,15 @@ def training_loop(
 def main():
 
     # Show original model info
-    base_model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
+    # base_model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
+    base_model = models.regnet_x_400mf(weights=RegNet_X_400MF_Weights.IMAGENET1K_V2) # Smaller model for quicker testing
     summary(base_model, input_size=(1, 3, 224, 224), depth=3)
     
     # Load model
     ts = time.perf_counter()
     num_classes = 75
     device = torch.device("cpu") # using CPU to start
-    model, criterion, optimizer = load_model(num_classes)
+    model, criterion, optimizer = load_model(num_classes, base_model)
     te = time.perf_counter()
     elapsed = round(te-ts, 3)
     print(f"model loaded in: {elapsed}s")
@@ -323,7 +323,7 @@ def main():
     pprint(classes)
 
     # Train model
-    num_epochs = 10
+    num_epochs = 3
     metrics_df = training_loop(
         num_epochs,
         model,
