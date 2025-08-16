@@ -1,4 +1,5 @@
 import io
+import os
 import requests
 import pandas as pd
 import seaborn as sns
@@ -88,6 +89,8 @@ def main(url: str):
     plot_models_table(df, xcol='GFLOPS', ycol='Acc@1', label='Weight')
 
     # Save
-    df.to_csv('data/pytorch_models_data.csv')
+    if not os.path.exists("../data"):
+        os.makedirs("../data")
+    df.to_csv('../data/pytorch_models_data.csv')
 
 main(URL)
