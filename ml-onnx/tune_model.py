@@ -1,13 +1,14 @@
 import os
 import gc
 import time
+import json
 import torch 
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import pandas as pd
 from torch.utils.data import DataLoader, random_split
-from torchvision import datasets, transforms, models
+from torchvision import transforms, models
 from torchvision.models import RegNet_Y_16GF_Weights, RegNet_X_400MF_Weights
 from torchinfo import summary
 from PIL import Image
@@ -17,7 +18,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from pprint import pprint
 from pathlib import Path
-from typing import Tuple, Optional, Any
+from typing import Any
 
 # Training
 LABELS_CSV_PATH = "./data/train_set.csv"
@@ -46,6 +47,9 @@ class TrainingDataset(Dataset):
         # Convert string labels to numeric
         self.data["label_encoded"] = self.label_encoder.transform(self.data["label"])
 
+        # Save labels
+        self.encoded_labels: np.ndarray = self.label_encoder.fit_transform(self.classes)
+
     def __len__(self):
         return len(self.data)
 
@@ -60,6 +64,20 @@ class TrainingDataset(Dataset):
         # Return numeric label as tensor
         label = torch.tensor(row['label_encoded'], dtype=torch.long)
         return image, label
+    
+    def export_labels(self):
+
+        # Create bidirectional mapping
+        encoded_labels = self.encoded_labels.tolist() # need to convert to JSON compatible format
+        class_to_int = dict(zip(self.classes, encoded_labels))
+        int_to_class = dict(zip(encoded_labels, self.classes))
+
+        # Save to json to use 
+        with open('./models/labels_mapping.json', 'w') as f:
+            json.dump({
+                'class_to_int': class_to_int,
+                'int_to_class': {str(k): v for k, v in int_to_class.items()}  # JSON keys must be strings
+            }, f)
 
 
 def load_model(num_classes, base_model: models.RegNet):
@@ -130,6 +148,9 @@ def load_data():
         img_dir=images_abs,
         transform=train_transform
     )
+
+    # Save labels for later reference
+    full_dataset.export_labels()
     
     # Calculate split sizes
     total_size = len(full_dataset)
@@ -302,9 +323,12 @@ def training_loop(
 def main():
 
     # Show original model info
-    base_model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
-    # base_model = models.regnet_x_400mf(weights=RegNet_X_400MF_Weights.IMAGENET1K_V2) # Smaller model for quicker testing
-    summary(base_model, input_size=(1, 3, 224, 224), depth=3)
+    # base_model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
+    base_model = models.regnet_x_400mf(weights=RegNet_X_400MF_Weights.IMAGENET1K_V2) # Smaller model for quicker testing
+
+    # Print and show summmary of the model architecture
+    model_input_size = (1, 3, 224, 224)
+    summary(base_model, input_size=model_input_size, depth=3)
     
     # Load model
     ts = time.perf_counter()
@@ -334,13 +358,20 @@ def main():
         device
     )
 
-    print(metrics_df.head())
+    print(metrics_df.head(num_epochs))
 
-    # Save model
+    # Save model as .pth
     model.to("cpu")
     model_save_path = f"./models/{base_model._get_name()}_tuned.pth"
     torch.save(model, model_save_path)
     print(f"Model saved to: {model_save_path}")
+
+    # Save model as onnx
+    example_inputs = (torch.randn(model_input_size))
+    onnx_program = torch.onnx.export(model, example_inputs, dynamo=True)
+    model_onnx_save_path = f"./models/{base_model._get_name()}_tuned.onnx"
+    onnx_program.save(model_onnx_save_path)
+    print(f"ONNX Model saved to: {model_onnx_save_path}")
 
 if __name__ == "__main__":
     main()
