@@ -1,3 +1,4 @@
-data
 venv
 models
+data/train
+data/test

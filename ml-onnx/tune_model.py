@@ -24,10 +24,6 @@ from typing import Any
 LABELS_CSV_PATH = "./data/train_set.csv"
 IMAGES_PATH = "./data/train"
 
-# Purely Testing
-VAL_LABELS_CSV_PATH = "./data/test_set.csv"
-VAL_IMAGES_PATH = "./data/test"
-
 
 class TrainingDataset(Dataset):
     def __init__(self, csv_file, img_dir, transform=None):
