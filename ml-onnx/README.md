@@ -2,6 +2,10 @@
 
 Dataset: [Butterfly Image Classification](https://www.kaggle.com/datasets/phucthaiv02/butterfly-image-classification)
 
+# Regnet Models
+
+[Regnet](https://docs.pytorch.org/vision/main/models/regnet.html)
+
 # Rust Notes
 
 Install: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`

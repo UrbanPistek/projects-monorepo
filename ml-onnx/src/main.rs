@@ -6,13 +6,15 @@ use ndarray::{Array, Array4, Axis};
 use serde::{Deserialize, Serialize};
 use ort::session::{builder::GraphOptimizationLevel, Session, SessionOutputs};
 use ort::{
-	value::TensorRef
+	value::TensorRef,
+    value::Tensor,
+    value::TensorRefMut
 };
 
 // Constants
-const SAMPLE_IMAGE_PATH: &str = "../data/test/Image_7.jpg";
-const ONNX_MODEL_PATH: &str = "../models/RegNet_tuned.onnx";
-const LABELS_MAPPING_PATH: &str = "../models/labels_mapping.json";
+const SAMPLE_IMAGE_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/data/test/Image_7.jpg";
+const ONNX_MODEL_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/models/RegNet_tuned.onnx";
+const LABELS_MAPPING_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/models/labels_mapping.json";
 
 // Struct to hold the label mappings
 #[derive(Debug, Serialize, Deserialize)]
@@ -74,6 +76,39 @@ fn preprocess_image(image_path: &str) -> Result<Array4<f32>> {
     Ok(array)
 }
 
+fn preprocess_image_v2(image_path: &str) -> Result<Array4<f32>> {
+    // Load and convert image to RGB
+    let image = image::open(image_path)?;
+    let image = image.to_rgb8();
+    
+    // Resize to 256x256 (equivalent to transforms.Resize(256))
+    let image = image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Lanczos3);
+    
+    // Center crop to 224x224 (equivalent to transforms.CenterCrop(224))
+    let image = center_crop(&image, 224);
+    
+    // Convert to ndarray and normalize
+    let mut array = Array4::zeros((1, 3, 224, 224));
+    
+    // ImageNet normalization values
+    let mean = [0.485, 0.456, 0.406];
+    let std = [0.229, 0.224, 0.225];
+    
+    for y in 0..224 {
+        for x in 0..224 {
+            let pixel = image.get_pixel(x, y);
+            
+            // Convert to [0, 1] range and apply ImageNet normalization
+            for c in 0..3 {
+                let normalized = (pixel[c] as f32 / 255.0 - mean[c]) / std[c];
+                array[[0, c, y as usize, x as usize]] = normalized;
+            }
+        }
+    }
+    
+    Ok(array)
+}
+
 fn load_labels_mapping(path: &str) -> Result<HashMap<i32, String>> {
     let file_content = std::fs::read_to_string(path)?;
     let mapping: LabelMapping = serde_json::from_str(&file_content)?;
@@ -106,8 +141,7 @@ fn softmax(logits: &[f32]) -> Vec<f32> {
     exp_logits.iter().map(|&x| x / sum_exp).collect()
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     // // Initialize ONNX Runtime environment
     // let environment = Environment::builder()
     //     .with_name("RegNet_Inference")
@@ -127,21 +161,57 @@ async fn main() -> Result<()> {
     
     // Load and preprocess the image
     println!("Loading and preprocessing image: {}", SAMPLE_IMAGE_PATH);
-    let input_array = preprocess_image(SAMPLE_IMAGE_PATH).unwrap();
+    // let input_array = preprocess_image(SAMPLE_IMAGE_PATH)?;
     
     // Run inference
     println!("Running inference...");
 
     // let tensor = input_array.into();
     // let outputs = model.run(ort::inputs!["data" => tensor]?)?;
-    let outputs: SessionOutputs = model.run(ort::inputs!["images" => TensorRef::from_array_view(&input_array)?])?;
-    let output = outputs["output0"].try_extract_array::<f32>()?.t().into_owned();
+    // let outputs: SessionOutputs = model.run(ort::inputs!["images" => TensorRef::from_array_view(&input_array)?])?;
+    // let outputs: SessionOutputs = model.run(ort::inputs!["images" => TensorRef::from_array_view(input_array.view())?])?;
+    // let outputs: SessionOutputs = model.run(ort::inputs!["images" => TensorRef::from_array_view(input_array)?])?;
+
+    // let mut array: ndarray::ArrayBase<ndarray::OwnedRepr<f32>, ndarray::Dim<[usize; 4]>> = Array4::<f32>::zeros((1, 3, 224, 224)); // this works ?
+    // let mut tensor = TensorRefMut::from_array_view_mut(array.view_mut())?;
+	// let mut extracted = tensor.extract_array_mut();
+
+    let image = image::open(SAMPLE_IMAGE_PATH)?;
+    let image = image.to_rgb8();
+    let image = image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Lanczos3);
+    let image = center_crop(&image, 224);
+    let mut array = Array4::<f32>::zeros((1, 3, 224, 224));
+    let mean = [0.485, 0.456, 0.406];
+    let std = [0.229, 0.224, 0.225];
+    for y in 0..224 {
+        for x in 0..224 {
+            let pixel = image.get_pixel(x, y);
+            
+            // Convert to [0, 1] range and apply ImageNet normalization
+            for c in 0..3 {
+                let normalized = (pixel[c] as f32 / 255.0 - mean[c]) / std[c];
+                array[[0, c, y as usize, x as usize]] = normalized;
+            }
+        }
+    }
+
+    let outputs: SessionOutputs = model.run(ort::inputs!["x" => TensorRef::from_array_view(&array)?])?;
+    // let outputs = model.run(ort::inputs!["input" => extracted]?)?;
+    
+    // Get predictions
+    // let predictions = outputs[0].try_extract::<f32>()?;
+
+    // let outputs: SessionOutputs = model.run(ort::inputs!["images" => Tensor::from_array(input_array)?])?;
+    println!("{:#?}", outputs);
+    // let output = outputs["output0"].try_extract_array::<f32>()?.t().into_owned();
     
     // Extract predictions
-    let predictions = output.view();
+    // let predictions = output.view();
+
+    let predictions = outputs["output0"].try_extract_array::<f32>()?;
     let predictions_slice = predictions.as_slice().unwrap();
     
-    // Find the predicted class
+    // // Find the predicted class
     let predicted_class_idx = argmax(predictions_slice);
     
     // Calculate probabilities using softmax
@@ -152,31 +222,16 @@ async fn main() -> Result<()> {
     let int_to_class = load_labels_mapping(LABELS_MAPPING_PATH)?;
     
     // Get the predicted class name
+    let default = String::from("Unknown");
     let predicted_class_name = int_to_class
         .get(&(predicted_class_idx as i32))
-        .unwrap_or(&"Unknown".to_string());
+        .unwrap_or(&default);
     
     // Print results
     println!("\n=== Inference Results ===");
     println!("Predicted class index: {}", predicted_class_idx);
     println!("Predicted class name: {}", predicted_class_name);
     println!("Confidence: {:.6}", confidence);
-    
-    // Print top 5 predictions
-    let mut indexed_probs: Vec<(usize, f32)> = probabilities
-        .iter()
-        .enumerate()
-        .map(|(i, &prob)| (i, prob))
-        .collect();
-    indexed_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-    
-    println!("\n=== Top 5 Predictions ===");
-    for (i, (class_idx, prob)) in indexed_probs.iter().take(5).enumerate() {
-        let class_name = int_to_class
-            .get(&(*class_idx as i32))
-            .unwrap_or(&"Unknown".to_string());
-        println!("{}. {} ({}): {:.6}", i + 1, class_name, class_idx, prob);
-    }
     
     Ok(())
 }
