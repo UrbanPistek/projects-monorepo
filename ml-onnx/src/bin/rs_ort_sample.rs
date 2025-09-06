@@ -1,16 +1,6 @@
-use std::collections::HashMap;
-use std::path::Path;
 use anyhow::Result;
-use image::{ImageBuffer, Rgb, RgbImage};
-use ndarray::{Array, Array4, Axis};
-use serde::{Deserialize, Serialize};
-
-use ort::session::{builder::GraphOptimizationLevel, Session, SessionOutputs};
-use ort::{
-	value::TensorRef,
-    value::Tensor,
-    value::TensorRefMut
-};
+use ort::session::{Session};
+use ort::{value::TensorRef};
 
 // Constants
 const SAMPLE_MODEL_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/src/data/upsample.onnx";

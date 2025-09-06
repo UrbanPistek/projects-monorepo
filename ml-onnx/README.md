@@ -23,3 +23,15 @@ cargo build
 cargo clean
 cargo build --release
 ```
+
+**Run sample:**
+
+```
+cargo run --bin rs_ort_sample
+```
+
+**Run Main:**
+
+```
+cargo run --bin onnx-inference
+```

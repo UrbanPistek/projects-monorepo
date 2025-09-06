@@ -1,4 +1,5 @@
 import json
+import time
 import onnxruntime 
 import numpy as np
 from PIL import Image
@@ -34,6 +35,8 @@ def load_labels_mapping():
 
 def main():
 
+    ts = time.perf_counter()
+
     # Use a sample image
     sample_img_path = Path(SAMPLE_IMAGE_PATH).resolve()
     image = Image.open(sample_img_path).convert("RGB")
@@ -64,6 +67,10 @@ def main():
     onnx_runtime_outputs = ort_session.run(None, onnx_runtime_input)
     res = np.argmax(onnx_runtime_outputs[0])
     print(res, int_to_class[res])
+
+    te = time.perf_counter()
+    elapsed_ms = (te-ts)*1000
+    print(f"Completed in {elapsed_ms}ms")
 
 if __name__ == "__main__":
     main()

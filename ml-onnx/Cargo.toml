@@ -28,6 +28,9 @@ tokio = { version = "1.0", features = ["full"] }
 # For testing
 criterion = "0.5"
 
-# [[bench]]
-# name = "inference_benchmark"
-# harness = false
+# Build profiles
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
