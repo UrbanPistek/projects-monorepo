@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 # ONNX Runtime
 ort = "=2.0.0-rc.10"
+# ort = "1.16.3"
 
 # Image processing
 image = { version = "0.24", features = ["png", "jpeg"] }

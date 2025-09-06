@@ -208,11 +208,12 @@ fn main() -> Result<()> {
     // Extract predictions
     // let predictions = output.view();
 
-    let predictions = outputs["output0"].try_extract_array::<f32>()?;
+    let predictions = outputs[0].try_extract_array::<f32>()?;
     let predictions_slice = predictions.as_slice().unwrap();
     
     // // Find the predicted class
     let predicted_class_idx = argmax(predictions_slice);
+    println!("{:#?}", predicted_class_idx);
     
     // Calculate probabilities using softmax
     let probabilities = softmax(predictions_slice);
@@ -220,6 +221,7 @@ fn main() -> Result<()> {
     
     // Load labels mapping
     let int_to_class = load_labels_mapping(LABELS_MAPPING_PATH)?;
+    println!("{:#?}", int_to_class);
     
     // Get the predicted class name
     let default = String::from("Unknown");
