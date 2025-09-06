@@ -2,3 +2,7 @@ venv
 models
 data/train
 data/test
+
+*.data
+*.svg
+*.data.old

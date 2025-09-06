@@ -24,6 +24,8 @@ cargo clean
 cargo build --release
 ```
 
+To build / run optimized release version add `--release` flag to those commands.
+
 **Run sample:**
 
 ```
@@ -34,4 +36,11 @@ cargo run --bin rs_ort_sample
 
 ```
 cargo run --bin onnx-inference
+```
+
+## Run flamegraph
+
+```
+sudo sysctl kernel.perf_event_paranoid=-1
+cargo flamegraph -c "record -F 1000 -g --call-graph dwarf" --bin onnx-inference
 ```
