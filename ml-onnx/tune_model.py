@@ -319,8 +319,8 @@ def training_loop(
 def main():
 
     # Show original model info
-    # base_model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
-    base_model = models.regnet_x_400mf(weights=RegNet_X_400MF_Weights.IMAGENET1K_V2) # Smaller model for quicker testing
+    base_model = models.regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_V2)
+    # base_model = models.regnet_x_400mf(weights=RegNet_X_400MF_Weights.IMAGENET1K_V2) # Smaller model for quicker testing
 
     # Print and show summmary of the model architecture
     model_input_size = (1, 3, 224, 224)
@@ -358,14 +358,15 @@ def main():
 
     # Save model as .pth
     model.to("cpu")
-    model_save_path = f"./models/{base_model._get_name()}_tuned.pth"
+    model_params_string = "y_16gf"
+    model_save_path = f"./models/{base_model._get_name()}_{model_params_string}_tuned.pth"
     torch.save(model, model_save_path)
     print(f"Model saved to: {model_save_path}")
 
     # Save model as onnx
     example_inputs = (torch.randn(model_input_size))
     onnx_program = torch.onnx.export(model, example_inputs, dynamo=True)
-    model_onnx_save_path = f"./models/{base_model._get_name()}_tuned.onnx"
+    model_onnx_save_path = f"./models/{base_model._get_name()}_{model_params_string}_tuned.onnx"
     onnx_program.save(model_onnx_save_path)
     print(f"ONNX Model saved to: {model_onnx_save_path}")
 

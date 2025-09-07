@@ -7,99 +7,25 @@ use std::time::Instant;
 use rand::seq::SliceRandom;
 use rand::rng;
 use indicatif::ProgressBar;
-use image::{ImageBuffer, RgbImage};
 use ort::session::{builder::GraphOptimizationLevel, Session, SessionOutputs};
 use glob::glob;
 use std::fs;
 use csv::Writer;
 
-// Constants
-const TEST_IMAGES_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/data/test";
-const ONNX_MODEL_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/models/RegNet_tuned.onnx";
-
-// Image preprocessing functions
-fn center_crop(image: &RgbImage, crop_size: u32) -> RgbImage {
-    let (width, height) = image.dimensions();
-    
-    let start_x = (width - crop_size) / 2;
-    let start_y = (height - crop_size) / 2;
-    
-    let mut cropped = ImageBuffer::new(crop_size, crop_size);
-    
-    for y in 0..crop_size {
-        for x in 0..crop_size {
-            let src_x = start_x + x;
-            let src_y = start_y + y;
-            cropped.put_pixel(x, y, *image.get_pixel(src_x, src_y));
-        }
-    }
-    
-    cropped
-}
-
-fn preprocess_image(image_path: &str) -> Result<Array4<f32>> {
-    // Load and convert image to RGB
-    let image = image::open(image_path)?;
-    let image = image.to_rgb8();
-    
-    // Resize to 256x256 (equivalent to transforms.Resize(256))
-    let image = image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Lanczos3);
-    
-    // Center crop to 224x224 (equivalent to transforms.CenterCrop(224))
-    let image = center_crop(&image, 224);
-    
-    // Convert to ndarray and normalize
-    let mut array = Array4::<f32>::zeros((1, 3, 224, 224));
-    
-    // ImageNet normalization values
-    let mean = [0.485, 0.456, 0.406];
-    let std = [0.229, 0.224, 0.225];
-    
-    for y in 0..224 {
-        for x in 0..224 {
-            let pixel = image.get_pixel(x, y);
-            
-            // Convert to [0, 1] range and apply ImageNet normalization
-            for c in 0..3 {
-                let normalized = (pixel[c] as f32 / 255.0 - mean[c]) / std[c];
-                array[[0, c, y as usize, x as usize]] = normalized;
-            }
-        }
-    }
-    
-    Ok(array)
-}
-
-fn argmax(array: &[f32]) -> usize {
-    array
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-        .map(|(index, _)| index)
-        .unwrap()
-}
-
-fn softmax(logits: &[f32]) -> Vec<f32> {
-    let max_logit = logits.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-    
-    let exp_logits: Vec<f32> = logits.iter().map(|&x| (x - max_logit).exp()).collect();
-    let sum_exp: f32 = exp_logits.iter().sum();
-    
-    exp_logits.iter().map(|&x| x / sum_exp).collect()
-}
-
 fn main() -> Result<()> {
 
     println!("> Running ONNX Benchmark");
+    let model_name: &str = "RegNet_x_400mf";
+    let test_images_path: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/data/test";
+    let onnx_model_path: String = format!("/home/urban/urban/projects/projects-monorepo/ml-onnx/models/{}_tuned.onnx", model_name);
 
     let mut model = Session::builder()?
     .with_optimization_level(GraphOptimizationLevel::Level3)?
-    .with_intra_threads(8)?
-    .commit_from_file(ONNX_MODEL_PATH)?;
-    println!("ONNX model loaded successfully from: {}", ONNX_MODEL_PATH);
+    .commit_from_file(&onnx_model_path)?;
+    println!("ONNX model loaded successfully from: {}", &onnx_model_path);
 
     // Load images
-    let images_path_abs = fs::canonicalize(TEST_IMAGES_PATH).expect("Invalid path");
+    let images_path_abs = fs::canonicalize(test_images_path).expect("Invalid path");
 
     // Build glob pattern: /abs/path/*.jpg
     let pattern = format!("{}/*.jpg", images_path_abs.display());
@@ -116,7 +42,7 @@ fn main() -> Result<()> {
         println!("No test images found! Please update the test_images list with actual image paths.");
     }
 
-    let num_runs = 10;
+    let num_runs = 1;
     println!("\nBenchmarking batch of {} images with {} runs...", image_paths.len(), num_runs);
 
     let mut all_results: Vec<HashMap<String, String>> = Vec::new();
@@ -134,7 +60,7 @@ fn main() -> Result<()> {
             .to_string_lossy()
             .into_owned();
 
-        let array_input = preprocess_image(path).unwrap();
+        let array_input = onnx_inference::common::preprocess_image(path).unwrap();
         preprocessed_images.insert(name, array_input);
         pre_pb.inc(1);
     }
@@ -157,8 +83,8 @@ fn main() -> Result<()> {
             let outputs: SessionOutputs = model.run(ort::inputs!["x" => TensorRef::from_array_view(img_tensor)?])?;
             let predictions = outputs[0].try_extract_array::<f32>()?;
             let predictions_slice = predictions.as_slice().unwrap();
-            let predicted_class_idx = argmax(predictions_slice);
-            let probabilities = softmax(predictions_slice);
+            let predicted_class_idx = onnx_inference::common::argmax(predictions_slice);
+            let probabilities = onnx_inference::common::softmax(predictions_slice);
             let confidence = probabilities[predicted_class_idx];
 
             let elapsed = start.elapsed().as_secs_f64() * 1000.0; // convert to ms
@@ -188,7 +114,6 @@ fn main() -> Result<()> {
     batch_results.insert("num_images".to_string(), (image_paths.len() as f64) * (num_runs as f64));
     batch_results.insert("rs_onnx_avg_time_ms".to_string(), avg_onnx_time);
     batch_results.insert("rs_onnx_total_time_ms".to_string(), total_onnx_time);
-
     println!("{:#?}", batch_results);
 
     // Collect all unique keys = CSV headers
@@ -200,8 +125,8 @@ fn main() -> Result<()> {
     headers.dedup();
 
     // Write to CSV
-    let filename = "./data/benchmarks/benchmark_batch_rs.csv";
-    let mut wtr = Writer::from_path(filename)?;
+    let filename: String = format!("./data/benchmarks/{}_benchmark_batch_rs_1.csv", model_name);
+    let mut wtr = Writer::from_path(&filename)?;
     wtr.write_record(&headers)?;
 
     for row in &all_results {
@@ -213,6 +138,6 @@ fn main() -> Result<()> {
     }
 
     wtr.flush()?;
-    println!("Saved results to {}", filename);
+    println!("Saved results to {}", &filename);
     Ok(())
 }

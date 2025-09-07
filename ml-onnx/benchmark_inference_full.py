@@ -13,6 +13,7 @@ from tqdm import tqdm
 from torchvision import transforms
 from typing import List, Dict, Any, Tuple
 
+MODEL_NAME = "RegNet_x_400mf"
 
 class ModelBenchmark:
 
@@ -232,8 +233,8 @@ class ModelBenchmark:
 def main():
 
     # Configuration
-    pytorch_model_path = "./models/RegNet_tuned.pth"
-    onnx_model_path = "./models/RegNet_tuned.onnx"
+    pytorch_model_path = f"./models/{MODEL_NAME}_tuned.pth"
+    onnx_model_path = f"./models/{MODEL_NAME}_tuned.onnx"
     labels_mapping_path = "./models/labels_mapping.json"
     images_path = "./data/test"
     num_runs = 1
@@ -271,8 +272,8 @@ def main():
         os.makedirs("./data/benchmarks")
     
     benchmark.print_summary(batch_results)
-    benchmark.save_results(batch_results, "./data/benchmarks/benchmark_batch_full.json")
-    results_df.to_csv("./data/benchmarks/benchmark_batch_full.csv")
+    benchmark.save_results(batch_results, f"./data/benchmarks/{MODEL_NAME}_benchmark_batch_full.json")
+    results_df.to_csv(f"./data/benchmarks/{MODEL_NAME}_benchmark_batch_full.csv")
     
     print("\nBenchmarking completed!")
 
