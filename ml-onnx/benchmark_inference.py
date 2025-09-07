@@ -13,7 +13,7 @@ from tqdm import tqdm
 from torchvision import transforms
 from typing import List, Dict, Any, Tuple
 
-MODEL_NAME = "RegNet_x_400mf"
+MODEL_NAME = "RegNet_y_16gf"
 
 class ModelBenchmark:
 

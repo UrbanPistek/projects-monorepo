@@ -15,7 +15,7 @@ use csv::Writer;
 fn main() -> Result<()> {
 
     println!("> Running ONNX Benchmark");
-    let model_name: &str = "RegNet_x_400mf";
+    let model_name: &str = "RegNet_y_16gf";
     let test_images_path: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/data/test";
     let onnx_model_path: String = format!("/home/urban/urban/projects/projects-monorepo/ml-onnx/models/{}_tuned.onnx", model_name);
 
