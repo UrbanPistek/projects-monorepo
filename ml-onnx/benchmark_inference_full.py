@@ -114,30 +114,25 @@ class ModelBenchmark:
         pytorch_times = []
         onnx_times = []
 
-        preprocessed_images_dict = {}
-        for image_path in image_paths:
-            image_name = Path(image_path).name
-            image_tensor = self.preprocess_image(image_path)
-            preprocessed_images_dict[image_name] = image_tensor
-
         for loop_num in range(num_runs):
 
-            # Get keys and shuffle them
-            keys = list(preprocessed_images_dict.keys())
-            random.shuffle(keys)
+            # Get shuffle list
+            random.shuffle(image_paths)
             
             # Loop with tqdm
-            for image_name in tqdm(keys, desc=f"Loop {loop_num + 1}"):
-                image_tensor = preprocessed_images_dict[image_name]
+            for image_path in tqdm(image_paths, desc=f"Loop {loop_num + 1}"):
+                image_name = Path(image_path).name
 
                 # Time PyTorch inference
                 ts = time.perf_counter()
+                image_tensor = self.preprocess_image(image_path)
                 pytorch_pred, pytorch_conf, _ = self.pytorch_inference(image_tensor)
                 pytorch_time = (time.perf_counter() - ts)
                 pytorch_times.append(pytorch_time * 1000) # convert to ms
                 
                 # Time ONNX inference
                 ts = time.perf_counter()
+                image_tensor = self.preprocess_image(image_path)
                 onnx_pred, onnx_conf, _ = self.onnx_inference(image_tensor)
                 onnx_time = (time.perf_counter() - ts)
                 onnx_times.append(onnx_time * 1000) # convert to ms
@@ -241,7 +236,7 @@ def main():
     onnx_model_path = "./models/RegNet_tuned.onnx"
     labels_mapping_path = "./models/labels_mapping.json"
     images_path = "./data/test"
-    num_runs = 10
+    num_runs = 1
 
     # Get full absolute paths
     pytorch_model_path_abs = Path(pytorch_model_path).resolve()
@@ -276,8 +271,8 @@ def main():
         os.makedirs("./data/benchmarks")
     
     benchmark.print_summary(batch_results)
-    benchmark.save_results(batch_results, "./data/benchmarks/benchmark_batch.json")
-    results_df.to_csv("./data/benchmarks/benchmark_batch.csv")
+    benchmark.save_results(batch_results, "./data/benchmarks/benchmark_batch_full.json")
+    results_df.to_csv("./data/benchmarks/benchmark_batch_full.csv")
     
     print("\nBenchmarking completed!")
 

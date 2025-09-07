@@ -121,10 +121,14 @@ fn main() -> Result<()> {
 
     // Run inference
     println!("Running inference...");
+    let start_inf = Instant::now();
     let outputs: SessionOutputs = model.run(ort::inputs!["x" => TensorRef::from_array_view(&array_input)?])?;
 
     let predictions = outputs[0].try_extract_array::<f32>()?;
+    println!("{:#?}", predictions);
+
     let predictions_slice = predictions.as_slice().unwrap();
+    println!("{:#?}", predictions_slice);
     
     // Find the predicted class
     let predicted_class_idx = argmax(predictions_slice);
@@ -132,6 +136,8 @@ fn main() -> Result<()> {
     // Calculate probabilities using softmax
     let probabilities = softmax(predictions_slice);
     let confidence = probabilities[predicted_class_idx];
+    let duration_inf = start_inf.elapsed();
+    println!("Inference done in: {:?}", duration_inf);
     
     // Load labels mapping
     let int_to_class = load_labels_mapping(LABELS_MAPPING_PATH)?;
