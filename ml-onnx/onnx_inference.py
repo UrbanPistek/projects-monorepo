@@ -6,7 +6,7 @@ from PIL import Image
 from pathlib import Path
 
 SAMPLE_IMAGE_PATH = "data/test/Image_7.jpg"
-ONNX_MODEL_PATH = "models/RegNet_tuned.onnx"
+ONNX_MODEL_PATH = "models/RegNet_x_400mf_tuned.onnx"
 LABELS_MAPPING_PATH = "models/labels_mapping.json"
 
 def center_crop_numpy(image_array: np.ndarray, crop_size: int) -> np.ndarray:
