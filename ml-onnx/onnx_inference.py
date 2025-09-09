@@ -5,8 +5,9 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 
+MODEL_NAME = "RegNet_x_400mf"
 SAMPLE_IMAGE_PATH = "data/test/Image_7.jpg"
-ONNX_MODEL_PATH = "models/RegNet_x_400mf_tuned.onnx"
+ONNX_MODEL_PATH = f"models/{MODEL_NAME}_tuned.onnx"
 LABELS_MAPPING_PATH = "models/labels_mapping.json"
 
 def center_crop_numpy(image_array: np.ndarray, crop_size: int) -> np.ndarray:
@@ -36,6 +37,7 @@ def load_labels_mapping():
 def main():
 
     ts = time.perf_counter()
+    print(f"Running Inference on {MODEL_NAME}")
 
     # Use a sample image
     sample_img_path = Path(SAMPLE_IMAGE_PATH).resolve()
@@ -62,11 +64,26 @@ def main():
         "x": image
     }
     # onnx_runtime_input = {input_arg.name: input_value for input_arg, input_value in zip(ort_session.get_inputs(), [image])} # alternate format
-    print(onnx_runtime_input)
 
+    ts_inf = time.perf_counter()
     onnx_runtime_outputs = ort_session.run(None, onnx_runtime_input)
-    res = np.argmax(onnx_runtime_outputs[0])
-    print(res, int_to_class[res])
+    logits = onnx_runtime_outputs[0]
+
+    # Apply softmax to get probabilities
+    exp_logits = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+    probabilities = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+    
+    # Apply argmax to get predicted class
+    predicted_class = np.argmax(logits, axis=1)[0]
+    confidence = probabilities[0][predicted_class]
+    te_inf = time.perf_counter()
+    elapsed_ms_inf = (te_inf-ts_inf)*1000
+    print(f"Inference Completed in {elapsed_ms_inf}ms")
+
+    print("\n=== Inference Results ===")
+    print(f"Predicted class index: {predicted_class}")
+    print(f"Predicted class name: {int_to_class[predicted_class]}")
+    print(f"Confidence: {confidence}")
 
     te = time.perf_counter()
     elapsed_ms = (te-ts)*1000

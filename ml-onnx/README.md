@@ -44,3 +44,23 @@ cargo run --bin onnx-inference
 sudo sysctl kernel.perf_event_paranoid=-1
 cargo flamegraph -c "record -F 1000 -g --call-graph dwarf" --bin onnx-inference
 ```
+
+
+## Run with hyperfine
+
+```
+hyperfine --warmup 2 --min-runs 5 'cargo run --bin onnx-inference --release'
+hyperfine --warmup 2 --min-runs 5 'python pytorch_inference.py'
+hyperfine --warmup 2 --min-runs 5 'python onnx_inference.py'
+```
+
+## Memory / CPU Profiling
+
+[Scalene](https://github.com/plasma-umass/scalene)
+
+```
+scalene pytorch_inference.py
+scalene onnx_inference.py
+```
+
+

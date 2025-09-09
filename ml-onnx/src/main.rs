@@ -6,8 +6,8 @@ use ort::{value::TensorRef};
 use std::time::Instant;
 
 // Constants
+const MODEL_NAME: &str = "RegNet_x_400mf";
 const SAMPLE_IMAGE_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/data/test/Image_7.jpg";
-const ONNX_MODEL_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/models/RegNet_tuned.onnx";
 const LABELS_MAPPING_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/models/labels_mapping.json";
 
 // Struct to hold the label mappings
@@ -36,27 +36,24 @@ fn main() -> Result<()> {
 
     // Start timer
     let start = Instant::now();
+    println!("Running Inference on: {:?}", MODEL_NAME);
 
+    let onnx_model_path: String = format!("/home/urban/urban/projects/projects-monorepo/ml-onnx/models/{}_tuned.onnx", MODEL_NAME);
     let mut model = Session::builder()?
     .with_optimization_level(GraphOptimizationLevel::Level3)?
     .with_intra_threads(4)?
-    .commit_from_file(ONNX_MODEL_PATH)?;
-    println!("ONNX model loaded successfully from: {}", ONNX_MODEL_PATH);
+    .commit_from_file(onnx_model_path)?;
     
     // Load and preprocess the image
-    println!("Loading and preprocessing image: {}", SAMPLE_IMAGE_PATH);
     let array_input = onnx_inference::common::preprocess_image(SAMPLE_IMAGE_PATH).unwrap();
 
     // Run inference
-    println!("Running inference...");
     let start_inf = Instant::now();
     let outputs: SessionOutputs = model.run(ort::inputs!["x" => TensorRef::from_array_view(&array_input)?])?;
 
+    // Extract predictions into usable format
     let predictions = outputs[0].try_extract_array::<f32>()?;
-    println!("{:#?}", predictions);
-
     let predictions_slice = predictions.as_slice().unwrap();
-    println!("{:#?}", predictions_slice);
     
     // Find the predicted class
     let predicted_class_idx = onnx_inference::common::argmax(predictions_slice);

@@ -6,3 +6,5 @@ data/test
 *.data
 *.svg
 *.data.old
+profile.html
+profile.json

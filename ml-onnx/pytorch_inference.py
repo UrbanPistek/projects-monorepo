@@ -5,10 +5,10 @@ from pathlib import Path
 import torch
 from torchvision import transforms, models
 
+MODEL_NAME = "RegNet_x_400mf"
 SAMPLE_IMAGE_PATH = "data/test/Image_7.jpg"
-PYTORCH_MODEL_PATH = "models/RegNet_x_400mf_tuned.pth"
+PYTORCH_MODEL_PATH = f"models/{MODEL_NAME}_tuned.pth"
 LABELS_MAPPING_PATH = "models/labels_mapping.json"
-
 
 def load_labels_mapping():
 
@@ -25,6 +25,7 @@ def load_labels_mapping():
 def main():
 
     ts = time.perf_counter()
+    print(f"Running Inference on {MODEL_NAME}")
 
     # Use a sample image
     sample_img_path = Path(SAMPLE_IMAGE_PATH).resolve()
@@ -49,13 +50,21 @@ def main():
     # Load labels mapping
     class_to_int, int_to_class = load_labels_mapping()
 
+    ts_inf = time.perf_counter()
     with torch.no_grad():
         outputs = model(image_tensor)
         probabilities = torch.softmax(outputs, dim=1)
         predicted_class = torch.argmax(outputs, dim=1).item()
         confidence = probabilities[0][predicted_class].item()
     
-    print(predicted_class, int_to_class[predicted_class])
+    te_inf = time.perf_counter()
+    elapsed_ms_inf = (te_inf-ts_inf)*1000
+    print(f"Inference Completed in {elapsed_ms_inf}ms")
+    
+    print("\n=== Inference Results ===")
+    print(f"Predicted class index: {predicted_class}")
+    print(f"Predicted class name: {int_to_class[predicted_class]}")
+    print(f"Confidence: {confidence}")
 
     te = time.perf_counter()
     elapsed_ms = (te-ts)*1000
