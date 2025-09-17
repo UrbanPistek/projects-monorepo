@@ -38,5 +38,5 @@ opt-level = 0
 
 [profile.release]
 opt-level = 3 # All optimizations
-debug = false
+debug = 1
 lto = "fat" # Longer LLVM link time optimizations

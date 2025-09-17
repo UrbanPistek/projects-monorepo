@@ -8,3 +8,5 @@ data/test
 *.data.old
 profile.html
 profile.json
+*.dat
+*.gz
