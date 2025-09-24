@@ -24,6 +24,17 @@ def get_data_table_from_url(url: str) -> pd.DataFrame:
         
         # Find all <table> elements
         tables = soup.find_all('table')
+
+        '''
+        [0] - n/a
+        [1] - classification weights
+        [2] - Quantized models
+        [3] - semantic segmentation weights
+        [4] - Object Detection
+        [5] - Instance Segmentation
+        [6] - Keypoint Detection
+        [7] - Video Classification
+        '''
         table = tables[1] # After some looking, its the 2nd table that I want
         table_string = io.StringIO(str(table)) # pandas works on html string input
 
@@ -111,8 +122,10 @@ def plot_models_table(
         fontsize=8, 
         title_fontsize=10
     )
-    plt.savefig(f"{title.replace(' ', '_')}", dpi=300, bbox_inches='tight')
+    filename = f"{title.replace(':', '').replace(' ', '_')}"
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.show()
+
 
 def replace_similar_substrings(text: str, target: str, threshold=80):
     words = text.split(".")
@@ -141,12 +154,12 @@ def main(url: str):
     # Extract the name part before the underscore
     df['model_type'] = df['Weight'].str.split('_').str[0].str.replace(r'\d+', '', regex=True).str.strip()
 
-    plot_models_table(df, xcol='Params', ycol='Acc@1', label='Weight', title='Params (M) v Acc@1', xaxis='Params (M)', yaxis='Acc@1')
-    plot_models_table(df, xcol='GFLOPS', ycol='Acc@1', label='Weight', title='GFLOPS v Acc@1', xaxis='GFLOPS', yaxis='Acc@1')
+    plot_models_table(df, xcol='Params', ycol='Acc@1', label='Weight', title='Image Classification Models: Params (M) v Acc@1', xaxis='Params (M)', yaxis='Acc@1')
+    plot_models_table(df, xcol='GFLOPS', ycol='Acc@1', label='Weight', title='Image Classification Models: GFLOPS v Acc@1', xaxis='GFLOPS', yaxis='Acc@1')
 
     # Save
     if not os.path.exists("../data"):
         os.makedirs("../data")
-    df.to_csv('../data/pytorch_models_data.csv')
+    df.to_csv('pytorch_classification_models_data.csv')
 
 main(URL)
