@@ -143,6 +143,6 @@ blender
 
 
 !ml-onnx/articles/media
-!ml-onnx/articles/media/GFLOPS_v_Acc@1.png
-!ml-onnx/articles/media/Params_(M)_v_Acc@1.png
+!ml-onnx/articles/media/*.png
+!ml-onnx/articles/media/*.csv
 
