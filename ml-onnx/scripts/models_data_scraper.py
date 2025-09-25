@@ -142,8 +142,13 @@ def main(url: str):
     print(df.head())
 
     # Clean up names 
-    df['Weight'] = df['Weight'].apply(lambda x: replace_similar_substrings(x, "IMAGENET1K_V1", 50))
-    df['Weight'] = df['Weight'].str.replace('_Weights', '', regex=False)
+    df['Model'] = df['Weight'].apply(lambda x: replace_similar_substrings(x, "IMAGENET1K_V1", 50))
+    df['Model'] = df['Model'].str.replace('_Weights', '', regex=False)
+
+    # Only here to generate some specific plots
+    # df = df.drop_duplicates(subset="Model")
+    # df = df.drop(index=105)
+    # df = df.drop(index=47)
 
     # Get acc / params ratio
     df['Params'] = df['Params'].str.replace('M', '', regex=False).astype(float) # remove M and convert to float
@@ -152,10 +157,12 @@ def main(url: str):
     print(top5)
 
     # Extract the name part before the underscore
-    df['model_type'] = df['Weight'].str.split('_').str[0].str.replace(r'\d+', '', regex=True).str.strip()
+    df['model_type'] = df['Model'].str.split('_').str[0].str.replace(r'\d+', '', regex=True).str.strip()
 
-    plot_models_table(df, xcol='Params', ycol='Acc@1', label='Weight', title='Image Classification Models: Params (M) v Acc@1', xaxis='Params (M)', yaxis='Acc@1')
-    plot_models_table(df, xcol='GFLOPS', ycol='Acc@1', label='Weight', title='Image Classification Models: GFLOPS v Acc@1', xaxis='GFLOPS', yaxis='Acc@1')
+    # title_base = f"Image Classification Models (IMAGENET1K_V1) Ex - [RegNet_Y_128GF, ViT_H_14]"
+    title_base = f"Image Classification Models"
+    plot_models_table(df, xcol='Params', ycol='Acc@1', label='Model', title=f'{title_base}: Params (M) v Acc@1', xaxis='Params (M)', yaxis='Acc@1')
+    plot_models_table(df, xcol='GFLOPS', ycol='Acc@1', label='Model', title=f'{title_base}: GFLOPS v Acc@1', xaxis='GFLOPS', yaxis='Acc@1')
 
     # Save
     if not os.path.exists("../data"):
