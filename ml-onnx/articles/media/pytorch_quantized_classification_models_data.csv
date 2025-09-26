@@ -1,15 +1,15 @@
-,Weight,Acc@1,Acc@5,Params,GIPS,Recipe,acc_per_params_M,model_type
-0,GoogLeNet_QuantizedWeights ,69.826,89.404,6.6,1.5,link,10.57969696969697,GoogLeNet
-1,Inception_V3_QuantizedWeights ,77.176,93.354,27.2,5.71,link,2.8373529411764706,Inception
-2,MobileNet_V2_QuantizedWeights ,71.658,90.15,3.5,0.3,link,20.473714285714287,MobileNet
-3,MobileNet_V3_Large_QuantizedWeights ,73.004,90.858,5.5,0.22,link,13.273454545454547,MobileNet
-4,ResNeXt101_32X8D_QuantizedWeights ,78.986,94.48,88.8,16.41,link,0.889481981981982,ResNeXt
-5,ResNeXt101_32X8D_QuantizedWeights ,82.574,96.132,88.8,16.41,link,0.9298873873873874,ResNeXt
-6,ResNeXt101_64X4D_QuantizedWeights ,82.898,96.326,83.5,15.46,link,0.9927904191616767,ResNeXt
-7,ResNet18_QuantizedWeights ,69.494,88.882,11.7,1.81,link,5.93965811965812,ResNet
-8,ResNet50_QuantizedWeights ,75.92,92.814,25.6,4.09,link,2.9656249999999997,ResNet
-9,ResNet50_QuantizedWeights ,80.282,94.976,25.6,4.09,link,3.1360156249999998,ResNet
-10,ShuffleNet_V2_X0_5_QuantizedWeights ,57.972,79.78,1.4,0.04,link,41.408571428571435,ShuffleNet
-11,ShuffleNet_V2_X1_0_QuantizedWeights ,68.36,87.582,2.3,0.14,link,29.721739130434784,ShuffleNet
-12,ShuffleNet_V2_X1_5_QuantizedWeights ,72.052,90.7,3.5,0.3,link,20.586285714285715,ShuffleNet
-13,ShuffleNet_V2_X2_0_QuantizedWeights ,75.354,92.488,7.4,0.58,link,10.182972972972973,ShuffleNet
+,Weight,Acc@1,Acc@5,Params,GIPS,Recipe,Model,acc_per_params_M,model_type
+0,GoogLeNet_QuantizedWeights.IMAGENET1K_FBGEMM_V1,69.826,89.404,6.6,1.5,link,GoogLeNet_QuantizedWeights ,10.57969696969697,GoogLeNet
+1,Inception_V3_QuantizedWeights.IMAGENET1K_FBGEMM_V1,77.176,93.354,27.2,5.71,link,Inception_V3_QuantizedWeights ,2.8373529411764706,Inception
+2,MobileNet_V2_QuantizedWeights.IMAGENET1K_QNNPACK_V1,71.658,90.15,3.5,0.3,link,MobileNet_V2_QuantizedWeights ,20.473714285714287,MobileNet
+3,MobileNet_V3_Large_QuantizedWeights.IMAGENET1K_QNNPACK_V1,73.004,90.858,5.5,0.22,link,MobileNet_V3_Large_QuantizedWeights ,13.273454545454547,MobileNet
+4,ResNeXt101_32X8D_QuantizedWeights.IMAGENET1K_FBGEMM_V1,78.986,94.48,88.8,16.41,link,ResNeXt101_32X8D_QuantizedWeights ,0.889481981981982,ResNeXt
+5,ResNeXt101_32X8D_QuantizedWeights.IMAGENET1K_FBGEMM_V2,82.574,96.132,88.8,16.41,link,ResNeXt101_32X8D_QuantizedWeights ,0.9298873873873874,ResNeXt
+6,ResNeXt101_64X4D_QuantizedWeights.IMAGENET1K_FBGEMM_V1,82.898,96.326,83.5,15.46,link,ResNeXt101_64X4D_QuantizedWeights ,0.9927904191616767,ResNeXt
+7,ResNet18_QuantizedWeights.IMAGENET1K_FBGEMM_V1,69.494,88.882,11.7,1.81,link,ResNet18_QuantizedWeights ,5.93965811965812,ResNet
+8,ResNet50_QuantizedWeights.IMAGENET1K_FBGEMM_V1,75.92,92.814,25.6,4.09,link,ResNet50_QuantizedWeights ,2.9656249999999997,ResNet
+9,ResNet50_QuantizedWeights.IMAGENET1K_FBGEMM_V2,80.282,94.976,25.6,4.09,link,ResNet50_QuantizedWeights ,3.1360156249999998,ResNet
+10,ShuffleNet_V2_X0_5_QuantizedWeights.IMAGENET1K_FBGEMM_V1,57.972,79.78,1.4,0.04,link,ShuffleNet_V2_X0_5_QuantizedWeights ,41.408571428571435,ShuffleNet
+11,ShuffleNet_V2_X1_0_QuantizedWeights.IMAGENET1K_FBGEMM_V1,68.36,87.582,2.3,0.14,link,ShuffleNet_V2_X1_0_QuantizedWeights ,29.721739130434784,ShuffleNet
+12,ShuffleNet_V2_X1_5_QuantizedWeights.IMAGENET1K_FBGEMM_V1,72.052,90.7,3.5,0.3,link,ShuffleNet_V2_X1_5_QuantizedWeights ,20.586285714285715,ShuffleNet
+13,ShuffleNet_V2_X2_0_QuantizedWeights.IMAGENET1K_FBGEMM_V1,75.354,92.488,7.4,0.58,link,ShuffleNet_V2_X2_0_QuantizedWeights ,10.182972972972973,ShuffleNet
