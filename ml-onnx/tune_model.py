@@ -13,7 +13,6 @@ from torchvision.models import RegNet_Y_16GF_Weights, RegNet_X_400MF_Weights
 from torchinfo import summary
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from pprint import pprint

@@ -4,6 +4,10 @@
 
 I want to mostly focus on the Inference side of things and how ONNX can be leveraged, but to get there I want to cover fine tuning a model to serve as a starting point and as a working example. Then I will dive into the specifics of how to use ONNX for inference in both rust and python, also covering how some of the pre-processing transforms can be replicated without having to rely on the transforms used in pytorch. 
 
+I give some quick hints as to why ONNX can be advantagious - which will be expanded on more. 
+
+1. 
+
 ### Dataset
 
 Dataset: [Butterfly Image Classification](https://www.kaggle.com/datasets/phucthaiv02/butterfly-image-classification)
@@ -210,9 +214,197 @@ def load_data():
 
 ## [2] Model Tuning
 
-One of the first things to adjust - when needed - while tuning a model is some of the layers, often the final layer. Since the model was initially trained on a different dataset, with a different number of output classes
+One of the first things to adjust - when needed - while tuning a model is some of the layers, often the final layer. Since the model was initially trained on a different dataset, with a different number of output classes the final linear layer needs to be modified to output the same number of classes. Additioanlly, the optimizer and criterion are defined. 
+
+```python
+def load_model(num_classes, base_model: models.RegNet):
+    num_features = base_model.fc.in_features
+    base_model.fc = nn.Linear(num_features, num_classes)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(base_model.parameters(), lr=0.0001)
+
+    return base_model, criterion, optimizer
+```
+
+From here the the steps are the same as with training a model, define the training and validation steps and run the training loop. I will put my functions for that here for reference. 
+
+**Training:**
+
+```python
+def epoch_train(
+        model: models.RegNet, 
+        train_dataloader: DataLoader[Any], 
+        criterion: nn.Module, 
+        optimizer: torch.optim.Optimizer,
+        device: torch.device,
+        epoch: int
+    ):
+
+    # Training params
+    predictions = []
+    labels = []
+    train_loss = 0
+    ts = time.perf_counter()
+
+    # Initiate training
+    model.train()
+
+    # Main training loop
+    batch_idx = 0
+    for images, targets in train_dataloader:
+
+        # Loader tensors
+        images: torch.Tensor = images.to(device)
+        targets: torch.Tensor = targets.to(device)
+
+        # Train
+        optimizer.zero_grad()
+        outputs: torch.Tensor = model(images)
+        loss: torch.Tensor = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+
+        # Calculate training metrics
+        train_loss += loss.item()
+        pred = torch.argmax(outputs, dim=-1).tolist()
+        predictions.extend(pred)
+        labels.extend(targets.tolist())
+        batch_idx += 1
+
+        # Explicity de-allocate memory
+        del outputs, loss, pred
+
+    # Calculate more metrics for tracking
+    train_loss = train_loss / len(train_dataloader)
+    te = time.perf_counter()
+    epoch_time = round(te-ts, 3)
+    train_acc = accuracy_score(labels, predictions)
+
+    print(f"[Train Epoch]: {epoch}, Accuracy: {train_acc}, Loss: {train_loss}, Time: {epoch_time}s")
+    epoch_metrics = {
+        "train_acc": train_acc,
+        "train_loss": train_loss,
+        "train_time": epoch_time
+    }
+
+    return epoch_metrics
+```
+
+**Validation:**
+
+```python
+def epoch_val(
+        model: models.RegNet, 
+        val_dataloader: DataLoader[Any], 
+        criterion: nn.Module, 
+        device: torch.device,
+        epoch: int
+    ):
+
+    # Training params
+    predictions = []
+    labels = []
+    val_loss = 0
+    ts = time.perf_counter()
+
+    # Initiate training
+    model.train()
+
+    # Main training loop
+    batch_idx = 0
+    for images, targets in val_dataloader:
+
+        # Loader tensors
+        with torch.no_grad():
+            images: torch.Tensor = images.to(device)
+            targets: torch.Tensor = targets.to(device)
+
+            # Val
+            outputs: torch.Tensor = model(images)
+            loss: torch.Tensor = criterion(outputs, targets)
+
+            # Calculate training metrics
+            val_loss += loss.item()
+            pred = torch.argmax(outputs, dim=-1).tolist()
+            predictions.extend(pred)
+            labels.extend(targets.tolist())
+            batch_idx += 1
+
+            # Explicity de-allocate memory
+            del outputs, loss, pred
+
+    # Calculate more metrics for tracking
+    val_loss = val_loss / len(val_dataloader)
+    te = time.perf_counter()
+    epoch_time = round(te-ts, 3)
+    val_acc = accuracy_score(labels, predictions)
+
+    print(f"[Validation Epoch]: {epoch}, Accuracy: {val_acc}, Loss: {val_loss}, Time: {epoch_time}s")
+    epoch_metrics = {
+        "val_acc": val_acc,
+        "val_loss": val_loss,
+        "val_time": epoch_time
+    }
+
+    return epoch_metrics
+```
+
+**Main Loop:**
+
+```python
+def training_loop(
+        num_epochs: int, 
+        model: models.RegNet, 
+        train_dataloader: DataLoader[Any], 
+        val_dataloader: DataLoader[Any],
+        criterion: nn.Module, 
+        optimizer: torch.optim.Optimizer,
+        device: torch.device
+    ) -> pd.DataFrame:
+
+    ts = time.perf_counter()
+    metrics = []
+    for epoch in range(num_epochs):
+        train_epoch_metrics = epoch_train(model, train_dataloader, criterion, optimizer, device, epoch)
+        val_epoch_metrics = epoch_val(model, val_dataloader, criterion, device, epoch)
+
+        # Merge into combined dictionary, python 3.9+ method
+        combined = train_epoch_metrics | val_epoch_metrics
+        metrics.append(combined)
+
+    te = time.perf_counter()
+    elapsed = round(te-ts, 3)
+    print(f"Training completed in: {elapsed}s")
+
+    # Create a metrics dataframe to view the results later
+    metrics_df = pd.DataFrame(metrics)
+
+    return metrics_df
+```
 
 ## [3] Exporting to ONNX
+
+There are a few different ways to save and export a pytroch model but I will focus on using the [ONNX](https://onnx.ai/) format to export - so why ONNX? In short it is a open format for machine learning models, thus allowing better interoperbility. Also, it offers a decent amount of optimizations and inference capabilities that can be advantagious - these I will explore more later. 
+
+```python
+# Save model as onnx
+example_inputs = (torch.randn(model_input_size))
+onnx_program = torch.onnx.export(model, example_inputs, dynamo=True)
+model_onnx_save_path = f"./models/{base_model._get_name()}_{model_params_string}_tuned.onnx"
+onnx_program.save(model_onnx_save_path)
+print(f"ONNX Model saved to: {model_onnx_save_path}")
+```
+
+In the practical lens, in python the ONNX runtime provides a much smaller package for running inference, and also can provide much better performance.
+
+Using `du -sh venv/lib/python3.10/site-packages/* | sort -h` we can see the package sizes in my local environment, we can see the difference is quite large between onnx and pytorch. For pytorch, currently there is not a seperate runtime you can install, you'll need all of pytorch unless you want to go through the manual process of striping down the package.
+
+```
+49M	venv/lib/python3.10/site-packages/onnxruntime
+1.6G	venv/lib/python3.10/site-packages/torch
+```
+
+To see the full tuning script, [see the source here](../tune_model.py).
 
 ## [4] ONNX Inference in Python
 
