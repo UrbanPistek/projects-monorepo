@@ -6,7 +6,9 @@ I want to mostly focus on the Inference side of things and how ONNX can be lever
 
 I give some quick hints as to why ONNX can be advantagious - which will be expanded on more. 
 
-1. 
+1. ONNX Runtime is optimized for inference - uses techniques like Kernel fusion & Graph optimization
+2. ONNX is an open standard for model representation
+3. ONNX models and runtimes tend to be lighter than PyTorch
 
 ### Dataset
 
@@ -408,9 +410,380 @@ To see the full tuning script, [see the source here](../tune_model.py).
 
 ## [4] ONNX Inference in Python
 
+A full sample script for running ONNX inference in python is [here](../onnx_inference.py). In general I'd say that the more nauced part is just replicating the transforms without using the pytorch library. Luckily for this specific case the actual transforms where not anything too complicated or advanced. 
+
+The transforms: 
+
+```python
+# Need to perform the base image transformations
+transform = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+])
+image_tensor = transform(image).unsqueeze(0)  # Add batch dimension
+```
+
+Can be written using just numpy as follows:
+
+```python
+def center_crop_numpy(image_array: np.ndarray, crop_size: int) -> np.ndarray:
+
+    # Get image shape
+    h, w, c = image_array.shape
+    
+    # Calculate crop coordinates
+    start_y = (h - crop_size) // 2
+    start_x = (w - crop_size) // 2
+
+    # Perform the crop
+    return image_array[start_y:start_y + crop_size, start_x:start_x + crop_size, :]
+
+image = image.resize((256, 256), Image.LANCZOS) # equivalent to transforms.Resize(256)
+image = np.asarray(image) # convert to numpy array
+image = center_crop_numpy(image, 224) # equivalent to transforms.CenterCrop(224)
+image = image.astype(np.float32) # equivalent to transforms.ToTensor()
+image = np.transpose(image / 255.0, (2, 0, 1)) # equivalent to transforms.Normalize()
+image = (image - 0.5) / 0.5
+image = np.expand_dims(image, axis=0) # Add batch dimension
+```
+
+The rest of the core ONNX inference steps are as follows:
+
+```python
+# Load the onnx model with the runtime session
+onnx_path = Path(ONNX_MODEL_PATH).resolve()
+ort_session = onnxruntime.InferenceSession(onnx_path)
+
+# Format for onnxruntime
+onnx_runtime_input = {
+    "x": image
+}
+onnx_runtime_outputs = ort_session.run(None, onnx_runtime_input)
+logits = onnx_runtime_outputs[0]
+
+# Apply softmax to get probabilities
+exp_logits = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+probabilities = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+
+# Apply argmax to get predicted class
+predicted_class = np.argmax(logits, axis=1)[0]
+confidence = probabilities[0][predicted_class]
+```
+
+The full script is as follows:
+
+```python
+import json
+import time
+import onnxruntime 
+import numpy as np
+from PIL import Image
+from pathlib import Path
+
+MODEL_NAME = "RegNet_x_400mf"
+SAMPLE_IMAGE_PATH = "data/test/Image_7.jpg"
+ONNX_MODEL_PATH = f"models/{MODEL_NAME}_tuned.onnx"
+LABELS_MAPPING_PATH = "models/labels_mapping.json"
+
+def center_crop_numpy(image_array: np.ndarray, crop_size: int) -> np.ndarray:
+
+    # Get image shape
+    h, w, c = image_array.shape
+    
+    # Calculate crop coordinates
+    start_y = (h - crop_size) // 2
+    start_x = (w - crop_size) // 2
+
+    # Perform the crop
+    return image_array[start_y:start_y + crop_size, start_x:start_x + crop_size, :]
+
+def load_labels_mapping():
+
+    # Load from a JSON file
+    class_to_int = {}
+    int_to_class = {}
+    with open(LABELS_MAPPING_PATH, 'r') as f:
+        mapping = json.load(f)
+        class_to_int = mapping['class_to_int']
+        int_to_class = {int(k): v for k, v in mapping['int_to_class'].items()}
+
+    return class_to_int, int_to_class
+
+def main():
+
+    ts = time.perf_counter()
+    print(f"Running Inference on {MODEL_NAME}")
+
+    # Use a sample image
+    sample_img_path = Path(SAMPLE_IMAGE_PATH).resolve()
+    image = Image.open(sample_img_path).convert("RGB")
+
+    # Load the onnx model with the runtime session
+    onnx_path = Path(ONNX_MODEL_PATH).resolve()
+    ort_session = onnxruntime.InferenceSession(onnx_path)
+
+    # Need to perform the base image transformations
+    image = image.resize((256, 256), Image.LANCZOS) # equivalent to transforms.Resize(256)
+    image = np.asarray(image) # convert to numpy array
+    image = center_crop_numpy(image, 224) # equivalent to transforms.CenterCrop(224)
+    image = image.astype(np.float32) # equivalent to transforms.ToTensor()
+    image = np.transpose(image / 255.0, (2, 0, 1)) # equivalent to transforms.Normalize()
+    image = (image - 0.5) / 0.5
+    image = np.expand_dims(image, axis=0) # Add batch dimension
+
+    # Load labels mapping
+    class_to_int, int_to_class = load_labels_mapping()
+
+    # Format for onnxruntime
+    onnx_runtime_input = {
+        "x": image
+    }
+    # onnx_runtime_input = {input_arg.name: input_value for input_arg, input_value in zip(ort_session.get_inputs(), [image])} # alternate format
+
+    ts_inf = time.perf_counter()
+    onnx_runtime_outputs = ort_session.run(None, onnx_runtime_input)
+    logits = onnx_runtime_outputs[0]
+
+    # Apply softmax to get probabilities
+    exp_logits = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+    probabilities = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+    
+    # Apply argmax to get predicted class
+    predicted_class = np.argmax(logits, axis=1)[0]
+    confidence = probabilities[0][predicted_class]
+    te_inf = time.perf_counter()
+    elapsed_ms_inf = (te_inf-ts_inf)*1000
+    print(f"Inference Completed in {elapsed_ms_inf}ms")
+
+    print("\n=== Inference Results ===")
+    print(f"Predicted class index: {predicted_class}")
+    print(f"Predicted class name: {int_to_class[predicted_class]}")
+    print(f"Confidence: {confidence}")
+
+    te = time.perf_counter()
+    elapsed_ms = (te-ts)*1000
+    print(f"Completed in {elapsed_ms}ms")
+
+if __name__ == "__main__":
+    main()
+```
+
 ## [5] ONNX Inference in Rust
 
+A full sample script for running ONNX inference in python is [here](../src/main.rs).
+
+With rust there are a couple of function we need to define ourselves - that at least at the time of writing this I don't know of a numpy equivalent library that has these - regardless, they are pretty straightforward functions. 
+
+```rust
+pub fn argmax(array: &[f32]) -> usize {
+    array
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+        .map(|(index, _)| index)
+        .unwrap()
+}
+
+pub fn softmax(logits: &[f32]) -> Vec<f32> {
+    let max_logit = logits.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+    
+    let exp_logits: Vec<f32> = logits.iter().map(|&x| (x - max_logit).exp()).collect();
+    let sum_exp: f32 = exp_logits.iter().sum();
+    
+    exp_logits.iter().map(|&x| x / sum_exp).collect()
+}
+
+pub fn center_crop(image: &RgbImage, crop_size: u32) -> RgbImage {
+    let (width, height) = image.dimensions();
+    
+    let start_x = (width - crop_size) / 2;
+    let start_y = (height - crop_size) / 2;
+    
+    let mut cropped = ImageBuffer::new(crop_size, crop_size);
+    
+    for y in 0..crop_size {
+        for x in 0..crop_size {
+            let src_x = start_x + x;
+            let src_y = start_y + y;
+            cropped.put_pixel(x, y, *image.get_pixel(src_x, src_y));
+        }
+    }
+    
+    cropped
+}
+```
+
+Then, we can create a pre-processing function that replicates the transform functionality from before. 
+
+```rust
+pub fn preprocess_image(image_path: &str) -> Result<Array4<f32>> {
+    // Load and convert image to RGB
+    let image = image::open(image_path)?;
+    let image = image.to_rgb8();
+    
+    // Resize to 256x256 (equivalent to transforms.Resize(256))
+    let image = image::imageops::resize(&image, 256, 256, image::imageops::FilterType::Lanczos3);
+    
+    // Center crop to 224x224 (equivalent to transforms.CenterCrop(224))
+    let image = center_crop(&image, 224);
+    
+    // Convert to ndarray and normalize
+    let mut array = Array4::<f32>::zeros((1, 3, 224, 224));
+    
+    // ImageNet normalization values
+    let mean = [0.485, 0.456, 0.406];
+    let std = [0.229, 0.224, 0.225];
+    
+    for y in 0..224 {
+        for x in 0..224 {
+            let pixel = image.get_pixel(x, y);
+            
+            // Convert to [0, 1] range and apply ImageNet normalization
+            for c in 0..3 {
+                let normalized = (pixel[c] as f32 / 255.0 - mean[c]) / std[c];
+                array[[0, c, y as usize, x as usize]] = normalized;
+            }
+        }
+    }
+    
+    Ok(array)
+}
+```
+
+With this the key inference steps look something like this: 
+
+```rust
+let onnx_model_path: String = format!("/home/urban/urban/projects/projects-monorepo/ml-onnx/models/{}_tuned.onnx", MODEL_NAME);
+let mut model = Session::builder()?
+.with_optimization_level(GraphOptimizationLevel::Level3)?
+.with_intra_threads(4)?
+.commit_from_file(onnx_model_path)?;
+
+// Load and preprocess the image
+let array_input = onnx_inference::common::preprocess_image(SAMPLE_IMAGE_PATH).unwrap();
+
+// Run inference
+let outputs: SessionOutputs = model.run(ort::inputs!["x" => TensorRef::from_array_view(&array_input)?])?;
+
+// Extract predictions into usable format
+let predictions = outputs[0].try_extract_array::<f32>()?;
+let predictions_slice = predictions.as_slice().unwrap();
+
+// Find the predicted class
+let predicted_class_idx = onnx_inference::common::argmax(predictions_slice);
+
+// Calculate probabilities using softmax
+let probabilities = onnx_inference::common::softmax(predictions_slice);
+let confidence = probabilities[predicted_class_idx];
+```
+
+The full script is can be something like this: 
+
+```rust
+use std::collections::HashMap;
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use ort::session::{builder::GraphOptimizationLevel, Session, SessionOutputs};
+use ort::{value::TensorRef};
+use std::time::Instant;
+
+// Constants
+const MODEL_NAME: &str = "RegNet_x_400mf";
+const SAMPLE_IMAGE_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/data/test/Image_7.jpg";
+const LABELS_MAPPING_PATH: &str = "/home/urban/urban/projects/projects-monorepo/ml-onnx/models/labels_mapping.json";
+
+// Struct to hold the label mappings
+#[derive(Debug, Serialize, Deserialize)]
+struct LabelMapping {
+    class_to_int: HashMap<String, i32>,
+    int_to_class: HashMap<String, String>,
+}
+
+// Util functions
+fn load_labels_mapping(path: &str) -> Result<HashMap<i32, String>> {
+    let file_content = std::fs::read_to_string(path)?;
+    let mapping: LabelMapping = serde_json::from_str(&file_content)?;
+    
+    // Convert string keys to integers for int_to_class mapping
+    let mut int_to_class = HashMap::new();
+    for (key, value) in mapping.int_to_class {
+        let int_key: i32 = key.parse()?;
+        int_to_class.insert(int_key, value);
+    }
+    
+    Ok(int_to_class)
+}
+
+fn main() -> Result<()> {
+
+    // Start timer
+    let start = Instant::now();
+    println!("Running Inference on: {:?}", MODEL_NAME);
+
+    let onnx_model_path: String = format!("/home/urban/urban/projects/projects-monorepo/ml-onnx/models/{}_tuned.onnx", MODEL_NAME);
+    let mut model = Session::builder()?
+    .with_optimization_level(GraphOptimizationLevel::Level3)?
+    .with_intra_threads(4)?
+    .commit_from_file(onnx_model_path)?;
+    
+    // Load and preprocess the image
+    let array_input = onnx_inference::common::preprocess_image(SAMPLE_IMAGE_PATH).unwrap();
+
+    // Run inference
+    let start_inf = Instant::now();
+    let outputs: SessionOutputs = model.run(ort::inputs!["x" => TensorRef::from_array_view(&array_input)?])?;
+
+    // Extract predictions into usable format
+    let predictions = outputs[0].try_extract_array::<f32>()?;
+    let predictions_slice = predictions.as_slice().unwrap();
+    
+    // Find the predicted class
+    let predicted_class_idx = onnx_inference::common::argmax(predictions_slice);
+    
+    // Calculate probabilities using softmax
+    let probabilities = onnx_inference::common::softmax(predictions_slice);
+    let confidence = probabilities[predicted_class_idx];
+    let duration_inf = start_inf.elapsed();
+    println!("Inference done in: {:?}", duration_inf);
+    
+    // Load labels mapping
+    let int_to_class = load_labels_mapping(LABELS_MAPPING_PATH)?;
+    
+    // Get the predicted class name
+    let default = String::from("Unknown");
+    let predicted_class_name = int_to_class
+        .get(&(predicted_class_idx as i32))
+        .unwrap_or(&default);
+    
+    // Print results
+    println!("\n=== Inference Results ===");
+    println!("Predicted class index: {}", predicted_class_idx);
+    println!("Predicted class name: {}", predicted_class_name);
+    println!("Confidence: {:.6}", confidence);
+
+    let duration = start.elapsed();
+    println!("Completed in: {:?}", duration);
+    
+    Ok(())
+}
+```
+
 ## [6] Summary
+
+I hope this gives helpful insight into tuning existing models, then after training exporting to ONNX formating and seeing how to run a ONNX model in both python and rust for inference. I have already covered some of the benefits of using the ONNX runtime, but I have not elboarated on any benefits of using rust - that is something I'll dive into deeper detail for another article. In short, other then all the benefits you have heard with using Rust, here is a small practical example. 
+
+Even though it is known that rust executables can be larger then other langauges - trading off a larger size for other benefits - we can check the size of the executable with: `ls -l target/release/onnx-inference`
+
+> -rwxrwxr-x 2 urban urban 37147936 Sep 17 07:28 target/release/onnx-inference
+
+Which is 37MB - already smaller then the `onnxruntime` python library just by itself; in this case the executable is all you need to run. So, there is a glimpsh into a aspect of the efficiencies you gain just right there. 
+
+For performance & further efficiencies - that is another deep dive. 
 
 ## [7] References
 
