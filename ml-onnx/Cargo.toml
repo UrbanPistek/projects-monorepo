@@ -35,6 +35,7 @@ criterion = "0.5"
 # Build profiles
 [profile.dev]
 opt-level = 0
+debug = true
 
 [profile.release]
 opt-level = 3 # All optimizations
