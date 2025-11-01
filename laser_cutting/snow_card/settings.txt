@@ -10,7 +10,7 @@ Laser Settings
 - (Engrave - Shallow) - Black, 4000mm/min, 10% Power, 1x
 
 Finish
-- White Acrlyic Paint
+- White Acrylic Paint
 - Sand with at least 600 grit with water
 
 Laser Cutter
