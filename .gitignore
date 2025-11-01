@@ -141,7 +141,9 @@ blender
 
 *.vscode
 
-
+!laser_cutting/snow_card/media
+!laser_cutting/snow_card/media/*.png
+!laser_cutting/snow_card/media/*.jpg
 !ml-onnx/articles/media
 !ml-onnx/articles/media/*.png
 !ml-onnx/articles/media/*.csv
