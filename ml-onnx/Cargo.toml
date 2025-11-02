@@ -2,6 +2,7 @@
 name = "onnx-inference"
 version = "0.1.0"
 edition = "2021"
+default-run = "onnx-inference"
 
 [dependencies]
 # ONNX Runtime

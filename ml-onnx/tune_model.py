@@ -244,7 +244,7 @@ def epoch_val(
     ts = time.perf_counter()
 
     # Initiate training
-    model.train()
+    model.eval()
 
     # Main training loop
     batch_idx = 0

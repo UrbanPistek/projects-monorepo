@@ -51,9 +51,14 @@ def main():
     image = image.resize((256, 256), Image.LANCZOS) # equivalent to transforms.Resize(256)
     image = np.asarray(image) # convert to numpy array
     image = center_crop_numpy(image, 224) # equivalent to transforms.CenterCrop(224)
-    image = image.astype(np.float32) # equivalent to transforms.ToTensor()
+    
+    # Normalize 
     image = np.transpose(image / 255.0, (2, 0, 1)) # equivalent to transforms.Normalize()
-    image = (image - 0.5) / 0.5
+    mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+    std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+    image = (image - mean) / std
+
+    image = image.astype(np.float32) # equivalent to transforms.ToTensor(), needs to be a float for ORT 
     image = np.expand_dims(image, axis=0) # Add batch dimension
 
     # Load labels mapping

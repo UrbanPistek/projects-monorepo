@@ -24,7 +24,7 @@ So why tuning a existing model here? The biggest reasons is efficiency - both in
 
 So we've selected a image dataset to use for this example and the general problem we are trying to address here is a classification task. So we'll want to select a image classification foundation model to use for our base, from [PyTorch Vision](https://docs.pytorch.org/vision/main/models.html), there are quite a few models to select from for this problem. Naturally, from the table there are so many models to choose from I was not sure what I wanted to select - model selection can be very nuanced but for this sample, I wanted to use a rough critieria to select something decent. 
 
-I started by using some basic web-scraping to pull the table for image classification pre-trained models from [here](https://docs.pytorch.org/vision/main/models.html#table-of-all-available-classification-weights) - if you wish to see how I did this see this Article [](https://medium.com/@urban.pistek/visual-compairsons-of-pytorch-pre-trained-models-resnet-deeplabv3-mvit-others-5f833606776a) I made outlining all the comparisons, methods and links to the raw data used to make all the visuals. From this article I am going to reference one image I made to show how I chose a model to fine-tune.
+I started by using some basic web-scraping to pull the table for image classification pre-trained models from [here](https://docs.pytorch.org/vision/main/models.html#table-of-all-available-classification-weights) - if you wish to see how I did this see this Article [Visual Compairsons of PyTorch Pre-trained Models: Resnet, DeepLabV3, MViT & Others](https://medium.com/@urban.pistek/visual-compairsons-of-pytorch-pre-trained-models-resnet-deeplabv3-mvit-others-5f833606776a) I made outlining all the comparisons, methods and links to the raw data used to make all the visuals. From this article I am going to reference one image I made to show how I chose a model to fine-tune.
 
 ![Image_Classification_Models_(IMAGENET1K_V1)_Params_(M)_v_Acc@1](./media/Image_Classification_Models_(IMAGENET1K_V1)_Params_(M)_v_Acc@1.png)
 
@@ -310,7 +310,7 @@ def epoch_val(
     ts = time.perf_counter()
 
     # Initiate training
-    model.train()
+    model.eval()
 
     # Main training loop
     batch_idx = 0
@@ -446,9 +446,14 @@ def center_crop_numpy(image_array: np.ndarray, crop_size: int) -> np.ndarray:
 image = image.resize((256, 256), Image.LANCZOS) # equivalent to transforms.Resize(256)
 image = np.asarray(image) # convert to numpy array
 image = center_crop_numpy(image, 224) # equivalent to transforms.CenterCrop(224)
-image = image.astype(np.float32) # equivalent to transforms.ToTensor()
+
+# Normalize 
 image = np.transpose(image / 255.0, (2, 0, 1)) # equivalent to transforms.Normalize()
-image = (image - 0.5) / 0.5
+mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+image = (image - mean) / std
+
+image = image.astype(np.float32) # equivalent to transforms.ToTensor(), needs to be a float for ORT 
 image = np.expand_dims(image, axis=0) # Add batch dimension
 ```
 
@@ -531,9 +536,14 @@ def main():
     image = image.resize((256, 256), Image.LANCZOS) # equivalent to transforms.Resize(256)
     image = np.asarray(image) # convert to numpy array
     image = center_crop_numpy(image, 224) # equivalent to transforms.CenterCrop(224)
-    image = image.astype(np.float32) # equivalent to transforms.ToTensor()
+    
+    # Normalize 
     image = np.transpose(image / 255.0, (2, 0, 1)) # equivalent to transforms.Normalize()
-    image = (image - 0.5) / 0.5
+    mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+    std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+    image = (image - mean) / std
+
+    image = image.astype(np.float32) # equivalent to transforms.ToTensor(), needs to be a float for ORT 
     image = np.expand_dims(image, axis=0) # Add batch dimension
 
     # Load labels mapping
