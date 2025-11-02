@@ -2,13 +2,13 @@
 
 ## [1] Overview
 
-I want to mostly focus on the Inference side of things and how ONNX can be leveraged, but to get there I want to cover fine tuning a model to serve as a starting point and as a working example. Then I will dive into the specifics of how to use ONNX for inference in both rust and python, also covering how some of the pre-processing transforms can be replicated without having to rely on the transforms used in pytorch. 
+I want to mostly focus on the Inference side of things and how ONNX can be leveraged, but to get there I want to cover fine tuning a model to serve as a starting point and as a working example. Then I will dive into the specifics of how to use ONNX for inference in both rust and python, also covering how some of the pre-processing transforms can be replicated without having to rely on the transforms used in PyTorch. 
 
-I give some quick hints as to why ONNX can be advantagious - which will be expanded on more. 
+I give some quick hints as to why ONNX can be advantageous - which will be expanded on more. 
 
 1. ONNX Runtime is optimized for inference - uses techniques like Kernel fusion & Graph optimization
 2. ONNX is an open standard for model representation
-3. ONNX models and runtimes tend to be lighter than PyTorch
+3. ONNX models and run-times tend to be lighter than PyTorch
 
 ### Dataset
 
@@ -18,17 +18,17 @@ I decided to use this image dataset because I thought it was a little more inter
 
 ### Model Selection & Data Preparation
 
-So why tuning a existing model here? The biggest reasons is efficiency - both in terms of cost and time in addition to getting faster convergence. By taking a more general existing model its weights are already adjusted to a point where it has a strong foundational knowledge in that general task. So tuning it requires much less training time to have adjust to your specific task. There are cases where training from sratch makes more sense, however I do think in a lot of senarios fine tuning just makes a lot of sense, and can give you great results with much less effort - overall more efficient. 
+So why tuning a existing model here? The biggest reasons is efficiency - both in terms of cost and time in addition to getting faster convergence. By taking a more general existing model its weights are already adjusted to a point where it has a strong foundational knowledge in that general task. So tuning it requires much less training time to have adjust to your specific task. There are cases where training from scratch makes more sense, however I do think in a lot of scenarios fine tuning just makes a lot of sense, and can give you great results with much less effort - overall more efficient. 
 
 > [Introduction to Fine-Tuning in Machine Learning](https://www.oracle.com/ca-en/artificial-intelligence/fine-tuning/)
 
-So we've selected a image dataset to use for this example and the general problem we are trying to address here is a classification task. So we'll want to select a image classification foundation model to use for our base, from [PyTorch Vision](https://docs.pytorch.org/vision/main/models.html), there are quite a few models to select from for this problem. Naturally, from the table there are so many models to choose from I was not sure what I wanted to select - model selection can be very nuanced but for this sample, I wanted to use a rough critieria to select something decent. 
+So we've selected a image dataset to use for this example and the general problem we are trying to address here is a classification task. So we'll want to select a image classification foundation model to use for our base, from [PyTorch Vision](https://docs.PyTorch.org/vision/main/models.html), there are quite a few models to select from for this problem. Naturally, from the table there are so many models to choose from I was not sure what I wanted to select - model selection can be very nuanced but for this sample, I wanted to use a rough criteria to select something decent. 
 
-I started by using some basic web-scraping to pull the table for image classification pre-trained models from [here](https://docs.pytorch.org/vision/main/models.html#table-of-all-available-classification-weights) - if you wish to see how I did this see this Article [Visual Compairsons of PyTorch Pre-trained Models: Resnet, DeepLabV3, MViT & Others](https://medium.com/@urban.pistek/visual-compairsons-of-pytorch-pre-trained-models-resnet-deeplabv3-mvit-others-5f833606776a) I made outlining all the comparisons, methods and links to the raw data used to make all the visuals. From this article I am going to reference one image I made to show how I chose a model to fine-tune.
+I started by using some basic web-scraping to pull the table for image classification pre-trained models from [here](https://docs.PyTorch.org/vision/main/models.html#table-of-all-available-classification-weights) - if you wish to see how I did this see this Article [Visual Compairsons of PyTorch Pre-trained Models: Resnet, DeepLabV3, MViT & Others](https://medium.com/@urban.pistek/visual-compairsons-of-PyTorch-pre-trained-models-resnet-deeplabv3-mvit-others-5f833606776a) I made outlining all the comparisons, methods and links to the raw data used to make all the visuals. From this article I am going to reference one image I made to show how I chose a model to fine-tune.
 
 ![Image_Classification_Models_(IMAGENET1K_V1)_Params_(M)_v_Acc@1](./media/Image_Classification_Models_(IMAGENET1K_V1)_Params_(M)_v_Acc@1.png)
 
-Using this, and also comparing the accuracy to the floating point operations, I chose a model that had a higher accuracy then most but still did not skew too high for the number of model parameters and GFLOPS - balancing accuracy and performance. I also chose a low params model to prototype and build with as I was initially testing things out to be able to execute the runtime quickly as I was verifying things while developing. 
+Using this, and also comparing the accuracy to the floating point operations, I chose a model that had a higher accuracy then most but still did not skew too high for the number of model parameters and GFLOPS - balancing accuracy and performance. I also chose a lower parameter model to prototype and build with as I was initially testing things out to be able to execute the runtime quickly as I was verifying things while developing. 
 
 To start, I used the following models to fine tune:
 
@@ -39,7 +39,7 @@ RegNet_X_400MF
 
 #### Loading the Model
 
-A convienant package to get all the layers and some info on a model is [torchinfo](https://pypi.org/project/torchinfo/), using this we can load the model and print out some info as follows: 
+A convenient package to get all the layers and some info on a model is [torchinfo](https://pypi.org/project/torchinfo/), using this we can load the model and print out some info as follows: 
 
 ```python
 from torchvision import models
@@ -55,7 +55,7 @@ summary(base_model, input_size=model_input_size, depth=3)
 
 #### Loading the Data
 
-Following PyTorch convension, a class is created to maange the loading of the data. Some additional steps are that a label encoder is created to take the string based labels and map them to a numerical form; the mappings are also exported to a json so we can easily review the mappings as well and use them in other applications. 
+Following PyTorch convension, a class is created to maange the loading of the data. Some additional steps are that a label encoder is created to take the string based labels and map them to a numerical form; the mappings are also exported to a JSON so we can easily review the mappings as well and use them in other applications. 
 
 ```python
 import os
@@ -216,7 +216,7 @@ def load_data():
 
 ## [2] Model Tuning
 
-One of the first things to adjust - when needed - while tuning a model is some of the layers, often the final layer. Since the model was initially trained on a different dataset, with a different number of output classes the final linear layer needs to be modified to output the same number of classes. Additioanlly, the optimizer and criterion are defined. 
+One of the first things to adjust - when needed - while tuning a model is some of the layers, often the final layer. Since the model was initially trained on a different dataset, with a different number of output classes the final linear layer needs to be modified to output the same number of classes. Additionally, the optimizer and criterion are defined. 
 
 ```python
 def load_model(num_classes, base_model: models.RegNet):
@@ -386,7 +386,7 @@ def training_loop(
 
 ## [3] Exporting to ONNX
 
-There are a few different ways to save and export a pytroch model but I will focus on using the [ONNX](https://onnx.ai/) format to export - so why ONNX? In short it is a open format for machine learning models, thus allowing better interoperbility. Also, it offers a decent amount of optimizations and inference capabilities that can be advantagious - these I will explore more later. 
+There are a few different ways to save and export a PyTorch model but I will focus on using the [ONNX](https://onnx.ai/) format to export - so why ONNX? In short it is a open format for machine learning models, thus allowing better interoperability. Also, it offers a decent amount of optimizations and inference capabilities that can be advantageous - these I will explore more later. 
 
 ```python
 # Save model as onnx
@@ -399,7 +399,7 @@ print(f"ONNX Model saved to: {model_onnx_save_path}")
 
 In the practical lens, in python the ONNX runtime provides a much smaller package for running inference, and also can provide much better performance.
 
-Using `du -sh venv/lib/python3.10/site-packages/* | sort -h` we can see the package sizes in my local environment, we can see the difference is quite large between onnx and pytorch. For pytorch, currently there is not a seperate runtime you can install, you'll need all of pytorch unless you want to go through the manual process of striping down the package.
+Using `du -sh venv/lib/python3.10/site-packages/* | sort -h` we can see the package sizes in my local environment, we can see the difference is quite large between onnx and PyTorch. For PyTorch, currently there is not a separate runtime you can install, you'll need all of PyTorch unless you want to go through the manual process of striping down the package.
 
 ```
 49M	venv/lib/python3.10/site-packages/onnxruntime
@@ -410,7 +410,7 @@ To see the full tuning script, [see the source here](../tune_model.py).
 
 ## [4] ONNX Inference in Python
 
-A full sample script for running ONNX inference in python is [here](../onnx_inference.py). In general I'd say that the more nauced part is just replicating the transforms without using the pytorch library. Luckily for this specific case the actual transforms where not anything too complicated or advanced. 
+A full sample script for running ONNX inference in python is [here](../onnx_inference.py). In general I'd say that the more nauced part is just replicating the transforms without using the PyTorch library. Luckily for this specific case the actual transforms where not anything too complicated or advanced. 
 
 The transforms: 
 
@@ -785,13 +785,13 @@ fn main() -> Result<()> {
 
 ## [6] Summary
 
-I hope this gives helpful insight into tuning existing models, then after training exporting to ONNX formating and seeing how to run a ONNX model in both python and rust for inference. I have already covered some of the benefits of using the ONNX runtime, but I have not elboarated on any benefits of using rust - that is something I'll dive into deeper detail for another article. In short, other then all the benefits you have heard with using Rust, here is a small practical example. 
+I hope this gives helpful insight into tuning existing models, then after training exporting to ONNX formatting and seeing how to run a ONNX model in both python and rust for inference. I have already covered some of the benefits of using the ONNX runtime, but I have not elaborated on any benefits of using rust - that is something I'll dive into deeper detail for another article. In short, other then all the benefits you have heard with using Rust, here is a small practical example. 
 
-Even though it is known that rust executables can be larger then other langauges - trading off a larger size for other benefits - we can check the size of the executable with: `ls -l target/release/onnx-inference`
+Even though it is known that rust executable can be larger then other languages - trading off a larger size for other benefits - we can check the size of the executable with: `ls -l target/release/onnx-inference`
 
 > -rwxrwxr-x 2 urban urban 37147936 Sep 17 07:28 target/release/onnx-inference
 
-Which is 37MB - already smaller then the `onnxruntime` python library just by itself; in this case the executable is all you need to run. So, there is a glimpsh into a aspect of the efficiencies you gain just right there. 
+Which is 37MB - already smaller then the `onnxruntime` python library just by itself; in this case the executable is all you need to run. So, there is a glimpse into a aspect of the efficiencies you gain just right there. 
 
 For performance & further efficiencies - that is another deep dive. 
 
