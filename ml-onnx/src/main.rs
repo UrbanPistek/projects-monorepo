@@ -38,10 +38,11 @@ fn main() -> Result<()> {
     let start = Instant::now();
     println!("Running Inference on: {:?}", MODEL_NAME);
 
+    // As a standalone script, using threads & disabling graph optimizations runs the fastest
     let onnx_model_path: String = format!("/home/urban/urban/projects/projects-monorepo/ml-onnx/models/{}_tuned.onnx", MODEL_NAME);
     let mut model = Session::builder()?
-    .with_optimization_level(GraphOptimizationLevel::Level3)?
-    .with_intra_threads(4)?
+    .with_optimization_level(GraphOptimizationLevel::Disable)?
+    .with_intra_threads(8)?
     .commit_from_file(onnx_model_path)?;
     
     // Load and preprocess the image

@@ -1,4 +1,4 @@
-image,rs_onnx_conf,rs_onnx_pred,rs_onnx_time_ms
+rs_image,rs_onnx_conf,rs_onnx_pred,rs_onnx_time_ms
 Image_869.jpg,0.8821247,49,14.3263
 Image_1569.jpg,0.994833,3,14.5752
 Image_2295.jpg,0.68691474,45,12.0772
