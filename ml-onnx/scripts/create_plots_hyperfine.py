@@ -20,7 +20,7 @@ def create_detailed_comparison_plot(save_path=None, figsize=(12, 7)):
     rs_onnx_mean = 228.8
     rs_onnx_std = 3.4
     
-    models = ['PyTorch', 'Py-ONNX', "Rust-ONNX"]
+    models = ['PyTorch', 'Python-ONNX', "Rust-ONNX"]
     means = [pytorch_mean, onnx_mean, rs_onnx_mean]
     stds = [pytorch_std, onnx_std, rs_onnx_std]
     
@@ -30,7 +30,7 @@ def create_detailed_comparison_plot(save_path=None, figsize=(12, 7)):
                    edgecolor='black', linewidth=1.2)
     
     ax1.set_ylabel('Inference Time (ms)', fontweight='bold')
-    ax1.set_title('Mean Inference Time')
+    ax1.set_title('Mean Execution Time')
     ax1.grid(True, axis='y', alpha=0.5)
     
     # Add value labels
@@ -39,9 +39,9 @@ def create_detailed_comparison_plot(save_path=None, figsize=(12, 7)):
         ax1.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
                 f'{mean:.2f}±{std:.2f}', 
                 ha='center', va='bottom', fontsize=9)
-        
+    
     # Overall title
-    fig.suptitle('PyTorch vs ONNX Runtime - Python Inference Time', fontsize=12, fontweight='bold')
+    fig.suptitle('PyTorch vs Python-ONNX vs Rust-ONNX: Hyperfine Comparison [RegNet_x_400mf]', fontsize=12, fontweight='bold')
     plt.tight_layout()
     
     # Save if path provided
@@ -56,11 +56,11 @@ def create_detailed_comparison_plot(save_path=None, figsize=(12, 7)):
 # Example usage
 if __name__ == "__main__":
 
-    name_base = "test"
+    name_base = "RegNet_x_400mf"
 
     # Create detailed comparison plot
     print("\nCreating detailed comparison plot...")
     create_detailed_comparison_plot(
-        save_path=f"../images/{name_base}_detailed_comparison.png"
+        save_path=f"../images/{name_base}_hyperfine_comparison.png"
     )
     

@@ -26,7 +26,7 @@ def create_detailed_comparison_plot(py_csv_path, rs_csv_path, save_path=None, fi
     rs_onnx_mean = df['rs_onnx_time_ms'].mean()
     rs_onnx_std = df['rs_onnx_time_ms'].std()
     
-    models = ['PyTorch', 'Py-ONNX', "Rust-ONNX"]
+    models = ['PyTorch', 'Python-ONNX', "Rust-ONNX"]
     means = [pytorch_mean, onnx_mean, rs_onnx_mean]
     stds = [pytorch_std, onnx_std, rs_onnx_std]
     
@@ -65,7 +65,7 @@ def create_detailed_comparison_plot(py_csv_path, rs_csv_path, save_path=None, fi
     ax2.grid(True, axis='y', alpha=0.5)
 
     # Overall title
-    fig.suptitle('PyTorch vs ONNX Runtime - Python Inference Time', fontsize=12, fontweight='bold')
+    fig.suptitle('PyTorch vs Python-ONNX vs Rust-ONNX - Isolated Inference Time [RegNet_y_16gf]', fontsize=12, fontweight='bold')
     plt.tight_layout()
     
     # Save if path provided
@@ -80,11 +80,11 @@ def create_detailed_comparison_plot(py_csv_path, rs_csv_path, save_path=None, fi
 # Example usage
 if __name__ == "__main__":
 
-    name_base = "test"
-    base_file = "RegNet_x_400mf_benchmark_no_pre.csv"
-    py_csv_file_path = f"../data/benchmarks/python/{base_file}"
+    name_base = "plot"
+    base_file = "RegNet_y_16gf_benchmark_no_pre"
+    py_csv_file_path = f"../data/benchmarks/python/{base_file}.csv"
     py_csv_file_path_abs = Path(py_csv_file_path).resolve()
-    rs_csv_file_path = f"../data/benchmarks/rs/{base_file}"
+    rs_csv_file_path = f"../data/benchmarks/rs/{base_file}.csv"
     rs_csv_file_path_abs = Path(rs_csv_file_path).resolve()
     
     # Create detailed comparison plot
@@ -92,6 +92,6 @@ if __name__ == "__main__":
     create_detailed_comparison_plot(
         py_csv_file_path_abs, 
         rs_csv_file_path_abs, 
-        save_path=f"../images/{name_base}_detailed_comparison.png"
+        save_path=f"../images/{base_file}_{name_base}.png"
     )
     
