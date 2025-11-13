@@ -108,7 +108,7 @@ fn main() -> Result<()> {
     headers.dedup();
 
     // Write to CSV
-    let filename: String = format!("./data/benchmarks/{}_benchmark_batch_rs_full.csv", model_name);
+    let filename: String = format!("./data/{}_benchmark_batch_inc_pre.csv", model_name);
     let mut wtr = Writer::from_path(&filename)?;
     wtr.write_record(&headers)?;
 

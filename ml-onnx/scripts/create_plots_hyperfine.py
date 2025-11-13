@@ -17,8 +17,8 @@ def create_detailed_comparison_plot(save_path=None, figsize=(12, 7)):
     pytorch_std =  178
     onnx_mean = 262.3
     onnx_std = 9.2
-    rs_onnx_mean = 228.8
-    rs_onnx_std = 3.4
+    rs_onnx_mean = 91.4
+    rs_onnx_std = 2.4
     
     models = ['PyTorch', 'Python-ONNX', "Rust-ONNX"]
     means = [pytorch_mean, onnx_mean, rs_onnx_mean]
