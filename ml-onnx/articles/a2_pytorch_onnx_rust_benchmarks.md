@@ -187,10 +187,12 @@ Benchmark 1: cargo run --release --bin onnx-inference
 ```
 
 Rust - With Graph Disabled, Threads = 8
+```
 ❯ hyperfine --warmup 2 --min-runs 5 './target/release/onnx-inference'                                                                                                               100%
 Benchmark 1: ./target/release/onnx-inference
   Time (mean ± σ):      91.4 ms ±   2.4 ms    [User: 272.9 ms, System: 56.4 ms]
   Range (min … max):    87.8 ms …  97.6 ms    33 runs
+```
 
 
 ##### Perf
