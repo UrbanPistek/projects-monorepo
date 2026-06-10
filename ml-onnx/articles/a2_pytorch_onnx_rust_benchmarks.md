@@ -26,7 +26,8 @@ To achieve this I utilized a combination of tools - which I am not going to focu
 2. [perf](https://www.brendangregg.com/perf.html)
 3. Custom scripts 
 
-Here is a reference to each inference script / program I used. 
+Here is a reference to each inference script / program I used.
+
 1. [PyTorch Inference](../pytorch_inference.py)
 2. [ONNX Python Inference](../onnx_inference.py)
 3. [ONNX Rust Inference](../src/main.rs)
