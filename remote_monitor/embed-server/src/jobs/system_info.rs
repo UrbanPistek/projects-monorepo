@@ -1,4 +1,8 @@
 use super::{update_job_run, JobStatus, SharedRegistry};
+use chrono::Utc;
+use secrecy::{ExposeSecret, SecretString};
+use sqlx::postgres::PgConnection;
+use sqlx::Connection;
 use std::time::Duration;
 use sysinfo::System;
 
@@ -8,6 +12,12 @@ const INTERVAL_SECS: u64 = 15;
 /// Spawn the system-info reporter that ticks every 15 seconds.
 pub fn spawn_system_info_job(registry: SharedRegistry) {
     tokio::spawn(async move {
+        // Load credentials once at startup; the connection itself is recreated each tick.
+        dotenvy::dotenv().ok();
+        let database_url = SecretString::from(
+            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env"),
+        );
+
         // Skip the immediate first tick so the server can start before the first report.
         let mut interval = tokio::time::interval(Duration::from_secs(INTERVAL_SECS));
         interval.tick().await;
@@ -30,15 +40,47 @@ pub fn spawn_system_info_job(registry: SharedRegistry) {
             let used_mem = system.used_memory();
             let uptime = System::uptime();
 
-            println!(
-                "[system_info] host={hostname} cpus={cpu_count} cpu_usage={cpu_usage:.1}% \
+            // Source column stores the full report so rows are self-contained in the DB.
+            let source = format!(
+                "host={hostname} cpus={cpu_count} cpu_usage={cpu_usage:.1}% \
                  mem={used_mem}/{total_mem} KB uptime={uptime}s"
             );
 
-            // Update registry after printing so /health shows when this job last ran.
+            // Fresh connection per iteration as requested; avoids holding stale pool state.
+            let host_name_etry = hostname.as_str();
+            let db_insert = insert_log_entry(&database_url, &host_name_etry).await;
+
+            println!(
+                "[system_info] {source} db_insert={}",
+                match &db_insert {
+                    Ok(()) => "ok".to_string(),
+                    Err(err) => format!("err: {err}"),
+                }
+            );
+
+            // Update registry after logging so /health shows when this job last ran.
             update_job_run(&registry, JOB_ID);
         }
     });
+}
+
+/// Open a new connection and insert one row into embed_server_logging.
+async fn insert_log_entry(
+    database_url: &SecretString,
+    source: &str,
+) -> Result<(), sqlx::Error> {
+    let mut connection =
+        PgConnection::connect(database_url.expose_secret()).await?;
+
+    sqlx::query(
+        "INSERT INTO embed_server_logging (ts, source) VALUES ($1, $2)",
+    )
+    .bind(Utc::now())
+    .bind(source)
+    .execute(&mut connection)
+    .await?;
+
+    Ok(())
 }
 
 /// Build the initial JobStatus entry registered at startup.
