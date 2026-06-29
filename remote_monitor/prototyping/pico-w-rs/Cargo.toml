@@ -5,8 +5,15 @@ edition = "2024"
 
 # tell Cargo not to build a test harness for the firmware binary
 [[bin]]
-name = "pico-w-rs"
+name = "blinky"
 path = "src/main.rs"
+test = false
+bench = false
+
+# tell Cargo not to build a test harness for the firmware binary
+[[bin]]
+name = "serial-echo"
+path = "src/bin/serial.rs"
 test = false
 bench = false
 
@@ -26,6 +33,12 @@ rp-pico = "0.9"
 # If you're not going to use a Board Support Package you'll need these:
 # rp2040-hal = { version="0.11", features=["rt", "critical-section-impl"] }
 # rp2040-boot2 = "0.3"
+
+
+# Serial Dependencies
+heapless = "0.7.16"
+usb-device = "0.3.1"
+usbd-serial = "0.2.1"
 
 # cargo build/run
 [profile.dev]
