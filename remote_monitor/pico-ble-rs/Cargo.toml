@@ -1,0 +1,84 @@
+[package]
+name = "pico-wh-ble"
+version = "0.1.0"
+edition = "2021"
+
+# ── Why git deps instead of crates.io versions? ───────────────────────────────
+# The Embassy crates (embassy-rp, cyw43, cyw43-pio, etc.) and trouble-host move
+# quickly and must all be locked to the same commit to avoid version mismatches.
+# Pinning a single git rev is the pattern used by the upstream Embassy examples
+# and is the most reliable way to get a working build right now.
+# Check https://github.com/embassy-rs/embassy for the latest main commit.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[dependencies]
+# ── Embassy async runtime ─────────────────────────────────────────────────────
+embassy-executor = { version = "0.10.0", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "arch-cortex-m",
+    "executor-thread",
+    "executor-interrupt",
+    "integrated-timers",
+    # Allocate 64 KB of task arena — needed for the cyw43 + BLE tasks
+    "task-arena-size-65536",
+    "defmt",
+] }
+
+# ── Embassy RP2040 HAL ────────────────────────────────────────────────────────
+embassy-rp = { version = "0.10.0", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+    "time-driver",
+    "critical-section-impl",
+    # Expose the unstable PAC so cyw43-pio can reach PIO registers
+    "unstable-pac",
+    "rp2040",
+] }
+
+# ── Embassy time / sync utilities ─────────────────────────────────────────────
+embassy-time = { version = "0.3.2", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+    "defmt-timestamp-uptime",
+] }
+embassy-sync  = { version = "0.8.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt"] }
+embassy-futures = { version = "0.1.1", git = "https://github.com/embassy-rs/embassy.git" }
+
+# ── USB logging (RTT alternative — optional but very useful for debugging) ────
+embassy-usb-logger = { version = "0.2.0", git = "https://github.com/embassy-rs/embassy.git" }
+
+# ── CYW43439 wireless driver (Wi-Fi + BLE over PIO SPI) ──────────────────────
+cyw43     = { version = "0.7.0", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+    "firmware-logs",
+    # This feature enables the BLE HCI transport inside the driver
+    "bluetooth",
+] }
+cyw43-pio = { version = "0.10.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt"] }
+
+# ── BLE host stack (TrouBLE) ──────────────────────────────────────────────────
+trouble-host = { version = "0.1.0", git = "https://github.com/embassy-rs/trouble.git" }
+# bt-hci supplies the HCI trait that both cyw43 and trouble-host implement/consume
+bt-hci = { version = "0.1.1", default-features = false }
+
+# ── Static allocation (safe `static mut` replacement) ─────────────────────────
+static_cell      = "2.1"
+portable-atomic  = { version = "1.5", features = ["critical-section"] }
+
+# ── Cortex-M core support ─────────────────────────────────────────────────────
+cortex-m    = { version = "0.7.7", features = ["inline-asm"] }
+cortex-m-rt = "0.7.0"
+
+# ── Panic handler — prints via defmt, then halts ──────────────────────────────
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+
+# ── Structured logging via RTT/USB ────────────────────────────────────────────
+defmt     = "0.3"
+defmt-rtt = "0.4"
+log       = "0.4"
+
+[profile.release]
+opt-level   = "s"
+lto         = true
+codegen-units = 1
+debug       = true    # keep debug info for probe-rs backtraces
+
+[profile.dev]
+opt-level = "s"       # even debug builds must be small enough to fit
