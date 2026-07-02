@@ -26,29 +26,30 @@ cortex-m = { version = "0.7.6", features = ["inline-asm"] }
 cortex-m-rt = "0.7.0"
 critical-section = "1.1"
 panic-probe = { version = "1.0.0", features = ["print-defmt"] }
-display-interface-spi = "0.5.0"
-embedded-graphics = "0.8.1"
-mipidsi = "0.8.0"
-display-interface = "0.5.0"
-byte-slice-cast = { version = "1.2.0", default-features = false }
-smart-leds = "0.4.0"
 heapless = "0.9"
-usbd-hid = "0.10.0"
 
 embedded-hal-1 = { package = "embedded-hal", version = "1.0" }
-embedded-hal-async = "1.0"
-embedded-hal-bus = { version = "0.1", features = ["async"] }
-embedded-io-async = { version = "0.7.0", features = ["defmt"] }
-embedded-storage = { version = "0.3" }
 static_cell = "2.1"
 portable-atomic = { version = "1.5", features = ["critical-section"] }
-log = "0.4"
-rand = { version = "0.9.0", default-features = false }
-embedded-sdmmc = "0.7.0"
 
+# cargo build/run
+[profile.dev]
+codegen-units = 1
+debug = 2
+debug-assertions = true
+incremental = false
+opt-level = 3
+overflow-checks = true
+
+# cargo build/run --release
 [profile.release]
-# Enable generation of debug symbols even on release builds
-debug = true
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = 'fat'
+opt-level = 3
+overflow-checks = false
 
 [package.metadata.embassy]
 build = [
