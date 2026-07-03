@@ -140,7 +140,9 @@ blender
 *.jpg
 
 *.vscode
+*.cursor
 
+# Keep
 !laser_cutting/snow_card/media
 !laser_cutting/snow_card/media/*.png
 !laser_cutting/snow_card/media/*.jpg
