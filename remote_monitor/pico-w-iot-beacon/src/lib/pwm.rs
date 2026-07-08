@@ -10,11 +10,8 @@
 //!
 //! The input pin (GP22) is configured in [`cyw43::setup`](crate::cyw43::setup).
 
-use ::cyw43::Control;
 use embassy_rp::gpio::Input;
 use embassy_time::{Duration, Instant, with_timeout};
-
-use crate::led;
 
 /// How long with no PWM edges before we consider the signal gone.
 const QUIET_SECONDS: u32 = 5;
@@ -34,23 +31,11 @@ pub async fn sleep_until_activity(input: &mut Input<'_>) {
 /// line is quiet for [`QUIET_SECONDS`].
 ///
 /// Returns the last measured peak width (if any was captured this session).
-pub async fn monitor_until_quiet(input: &mut Input<'_>, control: &mut Control<'_>) -> Option<Duration> {
+pub async fn monitor_until_quiet(input: &mut Input<'_>) -> Option<Duration> {
     let mut quiet_seconds: u32 = 0;
     let mut last_peak: Option<Duration> = None;
 
-    // LED blink state — same 1 s on / 1 s off cadence as the BLE firmware.
-    let mut led_on = false;
-    let mut next_led_toggle = Instant::now();
-
     while quiet_seconds < QUIET_SECONDS {
-        // ── Service LED blink (non-blocking check each loop iteration) ───────
-        let now = Instant::now();
-        if now >= next_led_toggle {
-            led_on = !led_on;
-            led::set(control, led_on).await;
-            next_led_toggle = now + led::BLINK_PERIOD;
-        }
-
         // ── Sample one PWM peak within a 1-second window ─────────────────────
         match sample_peak(input).await {
             Some(peak) => {
@@ -63,8 +48,6 @@ pub async fn monitor_until_quiet(input: &mut Input<'_>, control: &mut Control<'_
         }
     }
 
-    // Turn the LED off when monitoring ends.
-    led::set(control, false).await;
 
     last_peak
 }

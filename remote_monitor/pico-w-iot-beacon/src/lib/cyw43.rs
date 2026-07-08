@@ -10,7 +10,7 @@ use ::cyw43::bluetooth::BtDriver;
 use ::cyw43::Cyw43439;
 use cyw43_pio::{DEFAULT_CLOCK_DIVIDER, PioSpi};
 use embassy_executor::Spawner;
-use embassy_rp::gpio::{Input, Level, Output, Pull};
+use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::PIO0;
 use embassy_rp::pio::Pio;
 use embassy_rp::{dma, Peripherals};
@@ -33,12 +33,6 @@ pub struct Cyw43Handles {
     pub control: ::cyw43::Control<'static>,
 }
 
-/// Combined peripheral setup: CYW43439 + PWM input on GP22.
-pub struct Setup {
-    pub cyw: Cyw43Handles,
-    pub pwm_input: Input<'static>,
-}
-
 /// Boots the CYW43439 with Bluetooth enabled and spawns its event-loop task.
 ///
 /// # Firmware blobs
@@ -51,7 +45,7 @@ pub struct Setup {
 /// - `nvram_rp2040.bin` — board NVRAM calibration
 ///
 /// Download from: <https://github.com/embassy-rs/embassy/tree/main/cyw43-firmware>
-pub async fn setup(spawner: Spawner, p: Peripherals) -> Setup {
+pub async fn setup(spawner: Spawner, p: Peripherals) -> Cyw43Handles {
     // Embed firmware at compile time. Paths are relative to this source file.
     let fw = aligned_bytes!("../../cyw43-firmware/43439A0.bin");
     let clm = aligned_bytes!("../../cyw43-firmware/43439A0_clm.bin");
@@ -61,9 +55,6 @@ pub async fn setup(spawner: Spawner, p: Peripherals) -> Setup {
     // WL_ON on GPIO 23 powers the CYW43439. CS on GPIO 25 frames SPI transactions.
     let pwr = Output::new(p.PIN_23, Level::Low);
     let cs = Output::new(p.PIN_25, Level::High);
-
-    // GP22 — free on the Pico W header (CYW43 uses GP23–25 and GP29).
-    let pwm_input = Input::new(p.PIN_22, Pull::Down);
 
     // PIO bit-bangs the CYW43-specific SPI protocol. Two DMA channels feed the
     // state machine so the CPU is not busy shifting every byte.
@@ -93,11 +84,7 @@ pub async fn setup(spawner: Spawner, p: Peripherals) -> Setup {
     // CLM must be uploaded before the chip is allowed to transmit on air.
     control.init(clm).await;
 
-    // Return the setup handles.
-    Setup {
-        cyw: Cyw43Handles { bt_device, control },
-        pwm_input,
-    }
+    Cyw43Handles { bt_device, control }
 }
 
 /// Background task that drives the CYW43439 event loop.

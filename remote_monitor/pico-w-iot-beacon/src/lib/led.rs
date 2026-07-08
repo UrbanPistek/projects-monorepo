@@ -6,9 +6,6 @@
 use ::cyw43::Control;
 use embassy_time::{Duration, Instant, Timer};
 
-/// LED on/off period — matches the BLE beacon firmware.
-pub const BLINK_PERIOD: Duration = Duration::from_secs(1);
-
 /// Sets the onboard LED on or off.
 pub async fn set(control: &mut Control<'_>, on: bool) {
     control.gpio_set(0, on).await;

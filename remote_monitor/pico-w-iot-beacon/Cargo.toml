@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2024"
 test = false
 
+# tell Cargo not to build a test harness for the firmware binary
+[[bin]]
+name = "app"
+path = "src/main.rs"
+test = false
+bench = false
+
 [dependencies]
 embassy-executor = { version = "0.10.0", git = "https://github.com/embassy-rs/embassy.git", rev = "56b52e66b59069eeb0ceeed2c7c096ee703413fe", features = ["platform-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
 embassy-time = { version = "0.5.1", git = "https://github.com/embassy-rs/embassy.git", rev = "56b52e66b59069eeb0ceeed2c7c096ee703413fe", features = ["defmt", "defmt-timestamp-uptime"] }
