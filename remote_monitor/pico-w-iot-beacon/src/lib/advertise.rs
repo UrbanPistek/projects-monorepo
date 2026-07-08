@@ -20,10 +20,14 @@ use trouble_host::{Address, Controller, HostResources, PacketPool, Stack};
 ///
 /// `0xFFFF` is reserved for internal/testing use. Register a real ID with the
 /// Bluetooth SIG before shipping a product.
-const COMPANY_ID: u16 = 0xFFFF;
+const COMPANY_ID: u16 = 0x000D; // 13
 
 /// Device name shown in BLE scanner apps.
 const DEVICE_NAME: &[u8] = b"pico-w-iot-beacon";
+
+// 0xC2 = 11xxxxxx — valid static random address
+// The top two bits of byte 0 must be `11` for a static random address.
+const DEVICE_ADDRESS: [u8; 6] = [0xC2, 0x00, 0x01, 0x02, 0x03, 0x04];
 
 type BleController = ExternalController<BtDriver<'static>, 10>;
 type BleResources = HostResources<BleController, DefaultPacketPool, 0, 0>;
@@ -38,10 +42,12 @@ pub fn setup(bt_device: BtDriver<'static>) -> Stack<'static, BleController, Defa
     let resources = BLE_RESOURCES.init(BleResources::new());
     let controller = ExternalController::new(bt_device);
 
-    // A random static address avoids tracking the device across power cycles.
-    // The top two bits of byte 0 must be `11` for a static random address.
+    // Uses the static address defined in the DEVICE_ADDRESS constant.
+    // n BLE, this is a static random address (fixed until reboot), not a public IEEE address. 
+    // TrouBLE exposes it via Address::random(...), which marks the address type as random. 
+    // During host init it sends the HCI LE Set Random Address command with your bytes
     trouble_host::new(controller, resources)
-        .set_random_address(Address::random([0x42, 0x00, 0x01, 0x02, 0x03, 0x04]))
+        .set_random_address(Address::random(DEVICE_ADDRESS))
         .build()
 }
 

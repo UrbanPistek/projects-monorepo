@@ -11,7 +11,7 @@ use embassy_executor::Spawner;
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIO0};
 use embassy_rp::pio::InterruptHandler;
 use embassy_rp::{bind_interrupts, dma};
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration};
 use embassy_futures::join::join;
 
 #[path = "lib/cyw43.rs"]
