@@ -13,7 +13,6 @@ use embassy_rp::pio::InterruptHandler;
 use embassy_rp::{bind_interrupts, dma};
 use embassy_time::{Duration, Timer};
 use embassy_futures::join::join;
-use embassy_rp::gpio::{Input, Pull};
 
 #[path = "lib/cyw43.rs"]
 mod cyw43;
@@ -30,9 +29,6 @@ const ADVERTISE_DURATION: Duration = Duration::from_secs(15);
 /// LED on/off period during the advertise window (matches the original demo).
 const LED_BLINK_PERIOD: Duration = Duration::from_millis(250);
 
-/// How long the device rests between advertise windows.
-const SLEEP_INTERVAL: Duration = Duration::from_secs(15);
-
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
     DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>, dma::InterruptHandler<DMA_CH1>;
@@ -42,12 +38,9 @@ bind_interrupts!(struct Irqs {
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
-    // Take PIN_22 out before cyw43::setup consumes `p`
-    // let mut pwm_input = Input::new(p.PIN_22, Pull::Down);
-
     // ── One-time setup ────────────────────────────────────────────────────────
-    let mut cyw = cyw43::setup(spawner, p).await;
-    let stack = advertise::setup(cyw.bt_device);
+    let mut platform = cyw43::setup(spawner, p).await;
+    let stack = advertise::setup(platform.cyw.bt_device);
     let mut peripheral = stack.peripheral();
     let mut runner = stack.runner();
 
@@ -63,27 +56,24 @@ async fn main(spawner: Spawner) {
             //
             // Note: the CYW43439 stays powered (WL_ON high). Fully power-gating it
             // would require re-init on every wake and is omitted for simplicity.
-            cyw43::set_power_mode(&mut cyw.control, PowerManagementMode::SuperSave).await;
-            led::set(&mut cyw.control, false).await;
-            // pwm::sleep_until_activity(&mut platform.pwm_input).await;
+            cyw43::set_power_mode(&mut platform.cyw.control, PowerManagementMode::SuperSave).await;
+            led::set(&mut platform.cyw.control, false).await; // Turn OFF
+            pwm::sleep_until_activity(&mut platform.pwm_input).await;
             
-            // For testing
-            Timer::after(SLEEP_INTERVAL).await; 
-
-            // Active phase: sample peak durations every second, blink LED, until the
-            // PWM signal is quiet for 60 seconds.
+            // Active phase: sample peak durations every second, LED ON
+            led::set(&mut platform.cyw.control, true).await; // Turn ON
             wake_count = wake_count.wrapping_add(1);
-            cyw43::set_power_mode(&mut cyw.control, PowerManagementMode::PowerSave).await;
+            cyw43::set_power_mode(&mut platform.cyw.control, PowerManagementMode::PowerSave).await;
 
-            // // `_last_peak` holds the most recent measurement for future use (e.g.
-            // // telemetry). Not logged here to keep the firmware simple.
-            // let _last_peak =
-            //     pwm::monitor_until_quiet(&mut platform.pwm_input, &mut platform.cyw.control).await;
+            // `_last_peak` holds the most recent measurement for future use (e.g.
+            // telemetry). Not logged here to keep the firmware simple.
+            let _last_peak = pwm::monitor_until_quiet(&mut platform.pwm_input).await;
+            led::set(&mut platform.cyw.control, false).await; // Turn OFF
 
             // Advertise after the PWM signal is quiet.
             join(
                 advertise::run_burst(&mut peripheral, wake_count, ADVERTISE_DURATION),
-                led::run_for(&mut cyw.control, ADVERTISE_DURATION, LED_BLINK_PERIOD),
+                led::run_for(&mut platform.cyw.control, ADVERTISE_DURATION, LED_BLINK_PERIOD),
             )
             .await;
         }
