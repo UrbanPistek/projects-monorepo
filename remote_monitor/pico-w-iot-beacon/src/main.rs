@@ -67,12 +67,12 @@ async fn main(spawner: Spawner) {
 
             // `_last_peak` holds the most recent measurement for future use (e.g.
             // telemetry). Not logged here to keep the firmware simple.
-            let _last_peak = pwm::monitor_until_quiet(&mut platform.pwm_input).await;
+            let measurements: pwm::FlowMeasurements = pwm::monitor_signal_until_quiet(&mut platform.pwm_input).await;
             led::set(&mut platform.cyw.control, false).await; // Turn OFF
 
             // Advertise after the PWM signal is quiet.
             join(
-                advertise::run_burst(&mut peripheral, wake_count, ADVERTISE_DURATION),
+                advertise::run_burst(&mut peripheral, wake_count, measurements, ADVERTISE_DURATION),
                 led::run_for(&mut platform.cyw.control, ADVERTISE_DURATION, LED_BLINK_PERIOD),
             )
             .await;

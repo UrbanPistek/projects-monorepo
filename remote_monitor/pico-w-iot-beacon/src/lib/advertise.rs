@@ -16,6 +16,9 @@ use trouble_host::advertise::{
 use trouble_host::prelude::*;
 use trouble_host::{Address, Controller, HostResources, PacketPool, Stack};
 
+// Internal modules
+use crate::pwm::FlowMeasurements;
+
 /// Bluetooth company identifier for manufacturer-specific data.
 ///
 /// `0xFFFF` is reserved for internal/testing use. Register a real ID with the
@@ -78,6 +81,7 @@ fn encode_adv_data(wake_count: u32, buf: &mut [u8; 31]) -> usize {
 pub async fn run_burst<C, P>(
     peripheral: &mut trouble_host::peripheral::Peripheral<'_, C, P>,
     wake_count: u32,
+    measurements: FlowMeasurements, 
     duration: Duration,
 ) where
     C: Controller,
