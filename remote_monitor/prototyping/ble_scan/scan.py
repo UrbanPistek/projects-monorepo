@@ -1,11 +1,32 @@
 import asyncio
 import sys
 import time
+import struct
 from bleak import BleakScanner
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 
-TARGET_NAME = "pico-w-iot-beacon"
+TARGET_NAME = "pico-w-ub"
+
+# Format string breakdown:
+#   '<'  = little-endian (change to '>' for big-endian)
+#   'I'  = unsigned 32-bit int  (4 bytes) → wake_count
+#   'd'  = 64-bit double float  (8 bytes) → avg_flow_rate_litres_per_min
+#   'd'  = 64-bit double float  (8 bytes) → total_volume_litres
+
+FORMAT = '>Bff'  # Total: 20 bytes
+
+def unpack_payload(payload: bytes) -> dict:
+    assert len(payload) == struct.calcsize(FORMAT), \
+        f"Expected {struct.calcsize(FORMAT)} bytes, got {len(payload)}"
+
+    wake_count, avg_flow_rate, total_volume = struct.unpack(FORMAT, payload)
+
+    return {
+        "wake_count":                  wake_count,
+        "avg_flow_rate_litres_per_min": avg_flow_rate,
+        "total_volume_litres":          total_volume,
+    }
 
 def on_detection(device: BLEDevice, adv: AdvertisementData):
     if device.name != TARGET_NAME:
@@ -35,11 +56,17 @@ def on_detection(device: BLEDevice, adv: AdvertisementData):
         for company_id, data in adv.manufacturer_data.items():
             print(f"  Company ID: 0x{company_id:04X} ({company_id})")
             print(f"  Raw bytes:  {data.hex()}")
-            print(f"  As ints:    {list(data)}")
-            if len(data) >= 4:
-                import struct
-                value = struct.unpack_from("<I", data)[0]
-                print(f"  As u32 LE:  {value}")
+            
+            # Decode bytes
+            decode_struct = unpack_payload(data)
+            wake_count = decode_struct["wake_count"]
+            avg_flow_rate_litres_per_min = decode_struct["avg_flow_rate_litres_per_min"]
+            total_volume_litres = decode_struct["total_volume_litres"]
+            
+            # Print results:
+            print(f"  Wake Count: {wake_count}")
+            print(f"  Average Flow: {avg_flow_rate_litres_per_min} L/min")
+            print(f"  Total Volumne: {total_volume_litres} L")
 
     if adv.tx_power:
         print(f"TX Power: {adv.tx_power} dBm")

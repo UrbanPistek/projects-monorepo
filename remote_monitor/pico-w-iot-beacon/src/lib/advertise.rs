@@ -26,7 +26,7 @@ use crate::pwm::FlowMeasurements;
 const COMPANY_ID: u16 = 0x000D; // 13
 
 /// Device name shown in BLE scanner apps.
-const DEVICE_NAME: &[u8] = b"pico-w-iot-beacon";
+const DEVICE_NAME: &[u8] = b"pico-w-ub";
 
 // 0xC2 = 11xxxxxx — valid static random address
 // The top two bits of byte 0 must be `11` for a static random address.
@@ -55,17 +55,28 @@ pub fn setup(bt_device: BtDriver<'static>) -> Stack<'static, BleController, Defa
 }
 
 /// Encodes the 31-byte BLE advertising PDU payload.
-fn encode_adv_data(wake_count: u32, buf: &mut [u8; 31]) -> usize {
-    let payload = wake_count.to_le_bytes();
+fn encode_adv_data(wake_count: u8, buf: &mut [u8; 31], measurements: FlowMeasurements) -> usize {
+    
+    /*
+    wake_count - 1 byte
+    avg_flow_rate_litres_per_min - 4 bytes
+    total_volumne_litres - 4 bytes
+    total = 9 bytes
+    payload = [wake_count (1), avg_flow_rate_litres_per_min (4), total_volumne_litres (4)]
+     */
+    let mut data: [u8; 9] = [0u8; 9];
+    data[0..1].copy_from_slice(&wake_count.to_be_bytes());
+    data[1..5].copy_from_slice(&measurements.avg_flow_rate_litres_per_min.to_be_bytes());
+    data[5..9].copy_from_slice(&measurements.total_volumne_litres.to_be_bytes());
 
     AdStructure::encode_slice(
         &[
-            AdStructure::Flags(LE_GENERAL_DISCOVERABLE | BR_EDR_NOT_SUPPORTED),
-            AdStructure::CompleteLocalName(DEVICE_NAME),
+            AdStructure::Flags(LE_GENERAL_DISCOVERABLE | BR_EDR_NOT_SUPPORTED), // 3 bytes
             AdStructure::ManufacturerSpecificData {
-                company_identifier: COMPANY_ID,
-                payload: &payload,
+                company_identifier: COMPANY_ID, // 2 bytes
+                payload: &data, // 9 bytes
             },
+            AdStructure::ShortenedLocalName(DEVICE_NAME),
         ],
         buf,
     )
@@ -80,15 +91,16 @@ fn encode_adv_data(wake_count: u32, buf: &mut [u8; 31]) -> usize {
 /// 15-second window cleanly.
 pub async fn run_burst<C, P>(
     peripheral: &mut trouble_host::peripheral::Peripheral<'_, C, P>,
-    wake_count: u32,
+    wake_count: u8,
     measurements: FlowMeasurements, 
     duration: Duration,
 ) where
     C: Controller,
     P: PacketPool,
 {
+    // Legacy BLE only supports 31 bytes packet
     let mut adv_buf = [0u8; 31];
-    let adv_len = encode_adv_data(wake_count, &mut adv_buf);
+    let adv_len = encode_adv_data(wake_count, &mut adv_buf, measurements);
 
     // 100 ms interval is a reasonable trade-off between discoverability and power.
     let params = AdvertisementParameters {

@@ -11,7 +11,7 @@ use embassy_executor::Spawner;
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIO0};
 use embassy_rp::pio::InterruptHandler;
 use embassy_rp::{bind_interrupts, dma};
-use embassy_time::{Duration};
+use embassy_time::{Duration, Timer};
 use embassy_futures::join::join;
 
 #[path = "lib/cyw43.rs"]
@@ -46,7 +46,7 @@ async fn main(spawner: Spawner) {
 
     // ── Sleep / active duty cycle ─────────────────────────────────────────────
     let app = async {
-        let mut wake_count: u32 = 0;
+        let mut wake_count: u8 = 0;
 
         loop {
             // Sleep phase: deepest CYW43 power save, LED off, wait for PWM activity.
@@ -65,9 +65,16 @@ async fn main(spawner: Spawner) {
             wake_count = wake_count.wrapping_add(1);
             cyw43::set_power_mode(&mut platform.cyw.control, PowerManagementMode::PowerSave).await;
 
-            // `_last_peak` holds the most recent measurement for future use (e.g.
-            // telemetry). Not logged here to keep the firmware simple.
-            let measurements: pwm::FlowMeasurements = pwm::monitor_signal_until_quiet(&mut platform.pwm_input).await;
+            // // `_last_peak` holds the most recent measurement for future use (e.g.
+            // // telemetry). Not logged here to keep the firmware simple.
+            // let measurements: pwm::FlowMeasurements = pwm::monitor_signal_until_quiet(&mut platform.pwm_input).await;
+            // led::set(&mut platform.cyw.control, false).await; // Turn OFF
+
+            let measurements = pwm::FlowMeasurements {
+                avg_flow_rate_litres_per_min: 0.423,
+                total_volumne_litres: 5.3,
+            };
+            Timer::after(Duration::from_secs(3)).await;
             led::set(&mut platform.cyw.control, false).await; // Turn OFF
 
             // Advertise after the PWM signal is quiet.

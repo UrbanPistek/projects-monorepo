@@ -16,15 +16,15 @@ use embassy_time::{Duration, Instant};
 
 /// How long with no PWM edges before we consider the signal gone.
 const QUIET_SECONDS: u32 = 5;
-const FLOW_SENSOR_K_FACTOR: f64 = 5.5;
+const FLOW_SENSOR_K_FACTOR: f32 = 5.5;
 
 /// Sample once per second while actively monitoring.
 const SAMPLE_INTERVAL: Duration = Duration::from_secs(1);
 
 // Track flow measurements
 pub struct FlowMeasurements {
-    pub avg_flow_rate_litres_per_min: f64,
-    pub total_volumne_litres: f64,
+    pub avg_flow_rate_litres_per_min: f32,
+    pub total_volumne_litres: f32,
 }
 
 /// Blocks until the PWM line toggles — used to wake from sleep.
@@ -49,11 +49,13 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
     let start = Instant::now();
 
     // Using a max of 16 sample points to limit size reserved on the stack
-    let mut current_frequency = 100.0; // Hertz
-    let mut flow_rates: Vec<f64, 16> = Vec::new();
+    let mut current_frequency = 100.0 as f32; // Hertz
+    let mut flow_rates: Vec<f32, 16> = Vec::new();
 
     // When the calculated frequency doops below a certain point we can stop sampling
-    while current_frequency > 1.0 {
+    // while current_frequency > 1.0 {
+    while start.elapsed() < Duration::from_secs(5) {
+        
         // Determine frequency
         current_frequency = determine_pwm_frequency(input).await;
         let flow_rate = current_frequency / FLOW_SENSOR_K_FACTOR;
@@ -63,7 +65,7 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
     // Determine final values
     let elapsed = start.elapsed();
     let avg_flow_rate = average(&flow_rates).unwrap(); // L / min
-    let total_volumne = avg_flow_rate * (elapsed.as_secs() * 60) as f64; // L
+    let total_volumne = avg_flow_rate * (elapsed.as_secs() * 60) as f32; // L
 
     FlowMeasurements {
         avg_flow_rate_litres_per_min: avg_flow_rate,
@@ -74,7 +76,7 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
 /// Samples once per second: waits for PWM activity, then measures one high pulse.
 ///
 /// Returns `None` if no edge arrives within one second — a "quiet" second.
-async fn determine_pwm_frequency(input: &mut Input<'_>) -> f64 {
+async fn determine_pwm_frequency(input: &mut Input<'_>) -> f32 {
     
     let start = Instant::now();
     let mut elapsed = start.elapsed();
@@ -95,13 +97,13 @@ async fn determine_pwm_frequency(input: &mut Input<'_>) -> f64 {
     }
 
     // Calculate the frequency in hertz
-    let frequency: f64 = (pulse_count / elapsed.as_millis()) as f64 * 1000.0; // uses millis so it only rounds down to the millisecond
+    let frequency: f32 = (pulse_count / elapsed.as_millis()) as f32 * 1000.0; // uses millis so it only rounds down to the millisecond
     return frequency;
 }
 
-fn average<const N: usize>(data: &Vec<f64, N>) -> Option<f64> {
+fn average<const N: usize>(data: &Vec<f32, N>) -> Option<f32> {
     if data.is_empty() {
         return None;
     }
-    Some(data.iter().sum::<f64>() / data.len() as f64)
+    Some(data.iter().sum::<f32>() / data.len() as f32)
 }

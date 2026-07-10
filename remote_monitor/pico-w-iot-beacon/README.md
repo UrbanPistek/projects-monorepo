@@ -15,3 +15,18 @@
 
 Run blinky with a LED connected to gpio.
 
+## flow meter
+
+More details about the flow meter:
+F=(5.5*Q)±2%, Q=L/Min, error: ±2%
+Working range: 1-60L/min
+Working voltage: DC 5-24 V
+Water Pressure: ≤1.2Mpa
+Liquid temperature: 0-100℃
+Maximum current consumption: 15 mA(DC 5V)
+Wire length: 15 cm
+Size: 66mm x 38mm(L*W)
+Refer to the wiring:
+Red wire: VCC(+)
+Black wire: GND(-)
+Yellow wire: Signal output
