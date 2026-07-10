@@ -65,17 +65,17 @@ async fn main(spawner: Spawner) {
             wake_count = wake_count.wrapping_add(1);
             cyw43::set_power_mode(&mut platform.cyw.control, PowerManagementMode::PowerSave).await;
 
-            // // `_last_peak` holds the most recent measurement for future use (e.g.
-            // // telemetry). Not logged here to keep the firmware simple.
-            // let measurements: pwm::FlowMeasurements = pwm::monitor_signal_until_quiet(&mut platform.pwm_input).await;
-            // led::set(&mut platform.cyw.control, false).await; // Turn OFF
-
-            let measurements = pwm::FlowMeasurements {
-                avg_flow_rate_litres_per_min: 0.423,
-                total_volumne_litres: 5.3,
-            };
-            Timer::after(Duration::from_secs(3)).await;
+            // `_last_peak` holds the most recent measurement for future use (e.g.
+            // telemetry). Not logged here to keep the firmware simple.
+            let measurements: pwm::FlowMeasurements = pwm::monitor_signal_until_quiet(&mut platform.pwm_input).await;
             led::set(&mut platform.cyw.control, false).await; // Turn OFF
+
+            // let measurements = pwm::FlowMeasurements {
+            //     avg_flow_rate_litres_per_min: 0.423,
+            //     total_volumne_litres: 5.3,
+            // };
+            // Timer::after(Duration::from_secs(3)).await;
+            // led::set(&mut platform.cyw.control, false).await; // Turn OFF
 
             // Advertise after the PWM signal is quiet.
             join(

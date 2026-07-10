@@ -12,14 +12,17 @@
 
 use heapless::Vec;
 use embassy_rp::gpio::Input;
+use embassy_time::with_timeout;
 use embassy_time::{Duration, Instant};
 
 /// How long with no PWM edges before we consider the signal gone.
-const QUIET_SECONDS: u32 = 5;
+const QUIET_SECONDS: Duration = Duration::from_secs(3);
 const FLOW_SENSOR_K_FACTOR: f32 = 5.5;
 
 /// Sample once per second while actively monitoring.
 const SAMPLE_INTERVAL: Duration = Duration::from_secs(1);
+// const HARD_MAX_DURATION_LIMIT: Duration = Duration::from_secs(60*60*2); // Max 2 hour hard time limit to prevent an infinite sample loop
+const HARD_MAX_DURATION_LIMIT: Duration = Duration::from_secs(30);
 
 // Track flow measurements
 pub struct FlowMeasurements {
@@ -47,19 +50,26 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
     
     // Track how long the signal is active for
     let start = Instant::now();
+    let mut signal_is_quiet = false;
 
     // Using a max of 16 sample points to limit size reserved on the stack
     let mut current_frequency = 100.0 as f32; // Hertz
     let mut flow_rates: Vec<f32, 16> = Vec::new();
 
     // When the calculated frequency doops below a certain point we can stop sampling
-    // while current_frequency > 1.0 {
-    while start.elapsed() < Duration::from_secs(5) {
+    while !signal_is_quiet && start.elapsed() < HARD_MAX_DURATION_LIMIT {
+    // while start.elapsed() < Duration::from_secs(5) { // TEST - 5 sec sample only
         
         // Determine frequency
         current_frequency = determine_pwm_frequency(input).await;
         let flow_rate = current_frequency / FLOW_SENSOR_K_FACTOR;
-        flow_rates.push(flow_rate);
+        let _ = flow_rates.push(flow_rate);
+
+        // Check if input has stopped for a specific amount of time
+        // After each frequency sample: if no edge within QUIET_SECONDS, signal is done.
+        signal_is_quiet = with_timeout(QUIET_SECONDS, input.wait_for_any_edge())
+            .await
+            .is_err(); // timeout = quiet, Ok(_) = still active
     }
 
     // Determine final values
@@ -79,25 +89,34 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
 async fn determine_pwm_frequency(input: &mut Input<'_>) -> f32 {
     
     let start = Instant::now();
-    let mut elapsed = start.elapsed();
     let mut pulse_count = 0;
 
     // determine the pulse frequency
-    while elapsed < SAMPLE_INTERVAL {
+    // within a specific sample interval
+    while start.elapsed() < SAMPLE_INTERVAL {
+
+        // Get remaining to keep true to sample interval
+        let remaining = SAMPLE_INTERVAL - start.elapsed();
 
         // Align to the start of a high pulse so we measure a full peak width.
         // Count the number of pulses in the interval
-        if input.is_low() {
-            input.wait_for_rising_edge().await;
-            pulse_count += 1;
+        // Have a timeout so if signal stops we do not wait forever
+        match with_timeout(remaining, input.wait_for_rising_edge()).await {
+            Ok(()) => pulse_count += 1,
+            Err(_) => break, // no rising edge before sample window ends
         }
+    }
 
-        // Determine elapsed time
-        elapsed = start.elapsed();
+    // Determine elapsed time
+    let elapsed = start.elapsed();
+
+    // Divide by 0 prevention
+    if elapsed.as_millis() < 1 {
+        return 0.0;
     }
 
     // Calculate the frequency in hertz
-    let frequency: f32 = (pulse_count / elapsed.as_millis()) as f32 * 1000.0; // uses millis so it only rounds down to the millisecond
+    let frequency: f32 = (pulse_count as f32 / elapsed.as_millis() as f32) * 1000.0; // uses millis so it only rounds down to the millisecond
     return frequency;
 }
 
