@@ -16,13 +16,12 @@ use embassy_time::with_timeout;
 use embassy_time::{Duration, Instant};
 
 /// How long with no PWM edges before we consider the signal gone.
-const QUIET_SECONDS: Duration = Duration::from_secs(3);
-const FLOW_SENSOR_K_FACTOR: f32 = 5.5;
+const QUIET_SECONDS: Duration = Duration::from_secs(5);
+const FLOW_SENSOR_K_FACTOR: f32 = 27.5; // original = 5.5
 
 /// Sample once per second while actively monitoring.
 const SAMPLE_INTERVAL: Duration = Duration::from_secs(1);
-// const HARD_MAX_DURATION_LIMIT: Duration = Duration::from_secs(60*60*2); // Max 2 hour hard time limit to prevent an infinite sample loop
-const HARD_MAX_DURATION_LIMIT: Duration = Duration::from_secs(30);
+const HARD_MAX_DURATION_LIMIT: Duration = Duration::from_secs(60*60*2); // Max 2 hour hard time limit to prevent an infinite sample loop
 
 // Track flow measurements
 pub struct FlowMeasurements {
@@ -58,7 +57,6 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
 
     // When the calculated frequency doops below a certain point we can stop sampling
     while !signal_is_quiet && start.elapsed() < HARD_MAX_DURATION_LIMIT {
-    // while start.elapsed() < Duration::from_secs(5) { // TEST - 5 sec sample only
         
         // Determine frequency
         current_frequency = determine_pwm_frequency(input).await;
@@ -73,9 +71,9 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
     }
 
     // Determine final values
-    let elapsed = start.elapsed();
+    let elapsed_seconds = ((start.elapsed().as_secs()) - (QUIET_SECONDS.as_secs())) as f32; // Subtract out quiet period threshold
     let avg_flow_rate = average(&flow_rates).unwrap(); // L / min
-    let total_volumne = avg_flow_rate * (elapsed.as_secs() * 60) as f32; // L
+    let total_volumne = avg_flow_rate * (elapsed_seconds / 60.0); // L
 
     FlowMeasurements {
         avg_flow_rate_litres_per_min: avg_flow_rate,
