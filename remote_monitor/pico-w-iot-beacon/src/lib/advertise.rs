@@ -1,10 +1,9 @@
 //! BLE beacon advertising via the TrouBLE host stack.
-//!
-//! TrouBLE implements the BLE *host* (L2CAP, ATT, advertising logic). The CYW43439
+//! The CYW43439
 //! is the *controller* and speaks HCI. `ExternalController` bridges the two.
 //!
-//! We use **non-connectable** advertising: scanners receive our payload without
-//! opening a connection, which suits a short 15-second broadcast window.
+//! Using the **non-connectable** advertising: scanners receive our payload without
+//! opening a connection, which suits a short broadcast window.
 
 use ::cyw43::bluetooth::BtDriver;
 use bt_hci::controller::ExternalController;
@@ -19,10 +18,7 @@ use trouble_host::{Address, Controller, HostResources, PacketPool, Stack};
 // Internal modules
 use crate::pwm::FlowMeasurements;
 
-/// Bluetooth company identifier for manufacturer-specific data.
-///
-/// `0xFFFF` is reserved for internal/testing use. Register a real ID with the
-/// Bluetooth SIG before shipping a product.
+/// Bluetooth "company identifier" for manufacturer-specific data.
 const COMPANY_ID: u16 = 0x000D; // 13
 
 /// Device name shown in BLE scanner apps.
@@ -69,6 +65,9 @@ fn encode_adv_data(wake_count: u8, buf: &mut [u8; 31], measurements: FlowMeasure
     data[1..5].copy_from_slice(&measurements.avg_flow_rate_litres_per_min.to_be_bytes());
     data[5..9].copy_from_slice(&measurements.total_volumne_litres.to_be_bytes());
 
+    /*
+    total = 14 bytes, still have 17 bytes useable for future data
+     */
     AdStructure::encode_slice(
         &[
             AdStructure::Flags(LE_GENERAL_DISCOVERABLE | BR_EDR_NOT_SUPPORTED), // 3 bytes
@@ -87,8 +86,7 @@ fn encode_adv_data(wake_count: u8, buf: &mut [u8; 31], measurements: FlowMeasure
 ///
 /// Starting advertising returns an [`Advertiser`] guard. While it is alive the
 /// controller transmits our PDU. Dropping it (or letting it go out of scope)
-/// sends the HCI command to disable advertising — that is how we end each
-/// 15-second window cleanly.
+/// sends the HCI command to disable advertising — that is how we end each window cleanly.
 pub async fn run_burst<C, P>(
     peripheral: &mut trouble_host::peripheral::Peripheral<'_, C, P>,
     wake_count: u8,

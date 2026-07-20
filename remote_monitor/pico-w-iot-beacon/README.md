@@ -9,12 +9,18 @@
 7. [hall-effect flow meter sensors](https://www.ti.com/content/dam/videos/external-videos/en-us/8/3816841626001/6299510807001.mp4/subassets/flow_meter_design_using_hall-effect_sensors.pdf)
 8. [hall effect sensors](https://blog.productsforautomation.com/hall-effect-sensors/)
 9. [struct chars](https://docs.python.org/3/library/struct.html#format-characters)
+10. [raspberry pico docs](https://pip-assets.raspberrypi.com/categories/610-raspberry-pi-pico/documents/RP-008307-DS-2-pico-datasheet.pdf)
+11. [beacon ble example](https://github.com/embassy-rs/trouble/blob/main/examples/apps/src/ble_beacon.rs)
+12. [embassy examples](https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/gpio_async.rs)
 
-# targets
+# flash
 
-## bilnky
+1. Hold BOOTSEL on pico board - while holding plug USB into computer
+2. Wait until device shows on computer, BOOTSEL can be released, then run `cargo run --release`
+3. Baord should now be flashed - will no longer show on the computer
 
-Run blinky with a LED connected to gpio.
+Debug Build Size: 850.50 KB
+Release Build Size: 835.50 KB
 
 ## flow meter
 

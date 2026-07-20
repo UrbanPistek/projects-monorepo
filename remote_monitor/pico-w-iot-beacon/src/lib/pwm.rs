@@ -6,7 +6,7 @@
 //!
 //! Sleep / wake:
 //!   - **Sleep**: block on `wait_for_any_edge()` — interrupt-driven, no polling.
-//!   - **Active**: sample one peak per second; 60 quiet seconds → back to sleep.
+//!   - **Active**: sample one peak per second
 //!
 //! The input pin (GP22) is configured in [`cyw43::setup`](crate::cyw43::setup).
 
@@ -17,7 +17,7 @@ use embassy_time::{Duration, Instant};
 
 /// How long with no PWM edges before we consider the signal gone.
 const QUIET_SECONDS: Duration = Duration::from_secs(5);
-const FLOW_SENSOR_K_FACTOR: f32 = 27.5; // original = 5.5
+const FLOW_SENSOR_K_FACTOR: f32 = 25.0; // original = 5.5, tested claribration
 
 /// Sample once per second while actively monitoring.
 const SAMPLE_INTERVAL: Duration = Duration::from_secs(1);
@@ -30,15 +30,14 @@ pub struct FlowMeasurements {
 }
 
 /// Blocks until the PWM line toggles — used to wake from sleep.
-///
-/// Any edge means "activity started". The Embassy executor sleeps the RP2040
-/// (WFE) while this future is pending.
+/// PWM should toggle when there is a measured input
 pub async fn sleep_until_activity(input: &mut Input<'_>) {
     input.wait_for_any_edge().await;
 }
 
-/// Monitors PWM peaks once per second, blinking the LED concurrently, until the
+/// Monitors PWM peaks once per second, until the
 /// line is quiet for [`QUIET_SECONDS`].
+/// Used to determine the frequency, which corresponds to the flow rate
 ///
 /// Returns the last measured peak width (if any was captured this session).
 /// F = (5.5 × Q)
@@ -52,6 +51,7 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
     let mut signal_is_quiet = false;
 
     // Using a max of 16 sample points to limit size reserved on the stack
+    #[allow(unused)] // Allow to always have a value initialized 
     let mut current_frequency = 100.0 as f32; // Hertz
     let mut flow_rates: Vec<f32, 16> = Vec::new();
 
@@ -75,15 +75,14 @@ pub async fn monitor_signal_until_quiet(input: &mut Input<'_>) -> FlowMeasuremen
     let avg_flow_rate = average(&flow_rates).unwrap(); // L / min
     let total_volumne = avg_flow_rate * (elapsed_seconds / 60.0); // L
 
+    // Return rate and total
     FlowMeasurements {
         avg_flow_rate_litres_per_min: avg_flow_rate,
         total_volumne_litres: total_volumne
     }
 }
 
-/// Samples once per second: waits for PWM activity, then measures one high pulse.
-///
-/// Returns `None` if no edge arrives within one second — a "quiet" second.
+/// Samples within a specific sampling interval
 async fn determine_pwm_frequency(input: &mut Input<'_>) -> f32 {
     
     let start = Instant::now();
@@ -118,6 +117,8 @@ async fn determine_pwm_frequency(input: &mut Input<'_>) -> f32 {
     return frequency;
 }
 
+
+// Simple average helper
 fn average<const N: usize>(data: &Vec<f32, N>) -> Option<f32> {
     if data.is_empty() {
         return None;

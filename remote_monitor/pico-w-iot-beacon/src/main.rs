@@ -1,5 +1,5 @@
 //! Raspberry Pi Pico W IoT Beacon
-//! Conserves power by sleeping most of the time and only advertising when the PWM signal is quiet.
+//! Conserves power by sleeping most of the time and only advertising when the PWM signal is active.
 
 #![no_std]
 #![no_main]
@@ -11,7 +11,7 @@ use embassy_executor::Spawner;
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIO0};
 use embassy_rp::pio::InterruptHandler;
 use embassy_rp::{bind_interrupts, dma};
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration};
 use embassy_futures::join::join;
 
 #[path = "lib/cyw43.rs"]
@@ -44,40 +44,44 @@ async fn main(spawner: Spawner) {
     let mut peripheral = stack.peripheral();
     let mut runner = stack.runner();
 
-    // ── Sleep / active duty cycle ─────────────────────────────────────────────
+    // ── Main cycle ─────────────────────────────────────────────
+    // Sleeps until signal detected on PWM pin
+    // Then wakes, samples, breifly advertises then goes back to sleep
     let app = async {
         let mut wake_count: u8 = 0;
 
+        // Sleep phase: deepest CYW43 power save, LED off, wait for PWM activity.
+        //
+        // `wait_for_any_edge` is interrupt-driven — the Embassy executor puts
+        // the RP2040 into WFE while waiting, so we are not spinning.
         loop {
-            // Sleep phase: deepest CYW43 power save, LED off, wait for PWM activity.
-            //
-            // `wait_for_any_edge` is interrupt-driven — the Embassy executor puts
-            // the RP2040 into WFE while waiting, so we are not spinning.
-            //
             // Note: the CYW43439 stays powered (WL_ON high). Fully power-gating it
             // would require re-init on every wake and is omitted for simplicity.
             cyw43::set_power_mode(&mut platform.cyw.control, PowerManagementMode::SuperSave).await;
+
+            // Ensure LED is off
             led::set(&mut platform.cyw.control, false).await; // Turn OFF
+
+            // Main blocking function, wait for signal
             pwm::sleep_until_activity(&mut platform.pwm_input).await;
             
-            // Active phase: sample peak durations every second, LED ON
+            // Only compile turning the LED on for debug mode
+            // Release version does not need LED turned ON - saves a bit of power
+            #[cfg(debug_assertions)]
             led::set(&mut platform.cyw.control, true).await; // Turn ON
+
+            // Active phase: sample peak durations every second, LED ON
             wake_count = wake_count.wrapping_add(1);
             cyw43::set_power_mode(&mut platform.cyw.control, PowerManagementMode::PowerSave).await;
 
-            // `_last_peak` holds the most recent measurement for future use (e.g.
-            // telemetry). Not logged here to keep the firmware simple.
+            // Collects measures until signal stops or a hard timeout is reached
             let measurements: pwm::FlowMeasurements = pwm::monitor_signal_until_quiet(&mut platform.pwm_input).await;
+
+            // Ensure LED is off
             led::set(&mut platform.cyw.control, false).await; // Turn OFF
 
-            // let measurements = pwm::FlowMeasurements {
-            //     avg_flow_rate_litres_per_min: 0.423,
-            //     total_volumne_litres: 5.3,
-            // };
-            // Timer::after(Duration::from_secs(3)).await;
-            // led::set(&mut platform.cyw.control, false).await; // Turn OFF
-
             // Advertise after the PWM signal is quiet.
+            // Data is broadcasted here
             join(
                 advertise::run_burst(&mut peripheral, wake_count, measurements, ADVERTISE_DURATION),
                 led::run_for(&mut platform.cyw.control, ADVERTISE_DURATION, LED_BLINK_PERIOD),
@@ -87,5 +91,6 @@ async fn main(spawner: Spawner) {
     };
 
     // The host runner processes HCI events from the CYW43. Both futures must poll.
+    // Main loop runs the main state machine, secondary loop runs comms with CYW43 chip
     join(runner.run(), app).await;
 }
