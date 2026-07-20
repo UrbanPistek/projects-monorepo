@@ -7,7 +7,7 @@ use std::time::Duration;
 use sysinfo::System;
 
 const JOB_ID: &str = "system_info";
-const INTERVAL_SECS: u64 = 15;
+const INTERVAL_SECS: u64 = 60*60*12; // 12 hours
 
 /// Spawn the system-info reporter that ticks every 15 seconds.
 pub fn spawn_system_info_job(registry: SharedRegistry) {
@@ -62,6 +62,38 @@ pub fn spawn_system_info_job(registry: SharedRegistry) {
             update_job_run(&registry, JOB_ID);
         }
     });
+}
+
+pub async fn get_initial_system_info(database_url: &SecretString) {
+    let mut system = System::new();
+    system.refresh_memory();
+    system.refresh_cpu_usage();
+
+    let hostname = System::host_name().unwrap_or_else(|| "unknown".to_string());
+    let cpu_count = system.cpus().len();
+    let cpu_usage: f32 = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
+        / cpu_count.max(1) as f32;
+    let total_mem = system.total_memory();
+    let used_mem = system.used_memory();
+    let uptime = System::uptime();
+
+    // Source column stores the full report so rows are self-contained in the DB.
+    let host_name_etry = hostname.as_str();
+    let source = format!(
+        "host={hostname} cpus={cpu_count} cpu_usage={cpu_usage:.1}% \
+         mem={used_mem}/{total_mem} KB uptime={uptime}s"
+    );
+
+    // Fresh connection at startup; same one-shot insert pattern as the periodic tick.
+    let db_insert = insert_log_entry(database_url, &host_name_etry).await;
+
+    println!(
+        "[system_info] {source} db_insert={}",
+        match &db_insert {
+            Ok(()) => "ok".to_string(),
+            Err(err) => format!("err: {err}"),
+        }
+    );
 }
 
 /// Open a new connection and insert one row into embed_server_logging.

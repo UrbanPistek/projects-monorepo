@@ -1,3 +1,4 @@
+mod ble_flow_scan;
 mod system_info;
 
 use chrono::{DateTime, Utc};
@@ -5,7 +6,9 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+pub use ble_flow_scan::{job_status as ble_flow_job_status, spawn_ble_flow_scan_job};
 pub use system_info::{job_status, spawn_system_info_job};
+pub use system_info::{get_initial_system_info};
 
 /// Metadata for a single background job, exposed via /health.
 #[derive(Debug, Clone, Serialize)]

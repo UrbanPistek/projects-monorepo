@@ -1,0 +1,8 @@
+# Cross-compilation config for Raspberry Pi (aarch64).
+# bluer -> dbus -> libdbus-sys needs target-arch pkg-config files in the build image.
+[target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update",
+    "apt-get install --assume-yes libdbus-1-dev:$CROSS_DEB_ARCH pkg-config",
+]

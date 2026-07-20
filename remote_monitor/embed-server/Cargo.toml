@@ -13,3 +13,11 @@ sysinfo = "0.33"
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "tls-rustls"] }
 dotenvy = "0.15"
 secrecy = "0.10"
+bluer = { version = "0.17", features = ["bluetoothd"] }
+futures = "0.3"
+
+# cargo build/run --release
+[profile.release]
+debug = 0
+lto = 'fat'
+opt-level = 3
