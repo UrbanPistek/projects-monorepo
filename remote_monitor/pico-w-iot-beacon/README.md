@@ -12,6 +12,7 @@
 10. [raspberry pico docs](https://pip-assets.raspberrypi.com/categories/610-raspberry-pi-pico/documents/RP-008307-DS-2-pico-datasheet.pdf)
 11. [beacon ble example](https://github.com/embassy-rs/trouble/blob/main/examples/apps/src/ble_beacon.rs)
 12. [embassy examples](https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/gpio_async.rs)
+13. [rust cyw43 driver](https://docs.rs/cyw43/latest/cyw43/)
 
 # flash
 
