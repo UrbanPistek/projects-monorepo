@@ -106,6 +106,9 @@ let nvram = aligned_bytes!("../../cyw43-firmware/nvram_rp2040.bin");
 2. Wait until the device shows up on the computer (similar to how a USB device shows up), BOOTSEL can be released, then run `cargo run --release` to build & flash
 3. Baord should now be flashed - it will no longer show on the computer
 
+![RPI-RP2](./images/rp_pico_device.png)
+![Flash Output](./images/flash_steps.png)
+
 # Sample Projects
 
 Here are some linked sample projects to demonstrate some basic functionalities & features.
