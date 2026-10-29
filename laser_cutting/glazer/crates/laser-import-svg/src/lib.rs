@@ -4,7 +4,7 @@ use laser_core::{
     SourceMetadata, SourceStyle, Subpath, UnitCertainty, UnitMetadata, VectorDocument, Rgba8,
 };
 use laser_import::{extension_is, ImportError, ImportOptions, VectorImporter};
-use usvg::{tiny_skia_path::PathSegment as UsvgSeg, Node, Paint, Tree};
+use usvg::{tiny_skia_path::PathSegment as UsvgSeg, Paint, Tree};
 
 pub struct SvgImporter;
 
@@ -112,7 +112,7 @@ pub fn import_svg(input: &[u8], options: &ImportOptions) -> Result<ImportResult,
 }
 
 fn walk(
-    node: &Node,
+    group: &usvg::Group,
     xf: &Affine,
     options: &ImportOptions,
     objects: &mut Vec<PathObject>,
@@ -121,12 +121,10 @@ fn walk(
     skipped: &mut u32,
     counts: &mut EntityCountMap,
 ) {
-    for child in node.children() {
-        match &*child {
-            usvg::Node::Group(group) => {
-                walk(
-                    group, xf, options, objects, warnings, imported, skipped, counts,
-                );
+    for child in group.children() {
+        match child {
+            usvg::Node::Group(inner) => {
+                walk(inner, xf, options, objects, warnings, imported, skipped, counts);
             }
             usvg::Node::Path(path) => {
                 counts.bump("path");
@@ -170,12 +168,25 @@ fn convert_path(path: &usvg::Path, xf: &Affine, options: &ImportOptions) -> Opti
     let mut start: Option<PointMm> = None;
     let mut segs: Vec<PathSegment> = Vec::new();
 
+    // Compose the path's absolute transform (viewBox + parent group transforms)
+    // with the source-to-canonical transform so path data is mapped correctly.
+    let abs = path.abs_transform();
+    let abs_affine = Affine {
+        a: abs.sx as f64,
+        b: abs.ky as f64,
+        c: abs.kx as f64,
+        d: abs.sy as f64,
+        e: abs.tx as f64,
+        f: abs.ty as f64,
+    };
+    let full_xf = abs_affine.then(*xf);
+
     let map = |x: f32, y: f32| {
         let p = PointMm {
             x: x as f64,
             y: y as f64,
         };
-        xf.apply(p)
+        full_xf.apply(p)
     };
 
     for seg in path.data().segments() {
@@ -365,9 +376,9 @@ mod tests {
 
     #[test]
     fn imports_physical_rectangle() {
-        let svg = br#"<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="50mm" viewBox="0 0 100 50">
+        let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="50mm" viewBox="0 0 100 50">
             <rect x="10" y="10" width="80" height="30" fill="none" stroke="#FF0000" stroke-width="0.5"/>
-        </svg>"#;
+        </svg>"##;
         let result = SvgImporter
             .import(svg, &ImportOptions::new("rect.svg"))
             .unwrap();
@@ -382,9 +393,9 @@ mod tests {
 
     #[test]
     fn viewbox_only_is_ambiguous() {
-        let svg = br#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="40" fill="none" stroke="#00FF00"/>
-        </svg>"#;
+        </svg>"##;
         let result = SvgImporter
             .import(svg, &ImportOptions::new("vb.svg"))
             .unwrap();

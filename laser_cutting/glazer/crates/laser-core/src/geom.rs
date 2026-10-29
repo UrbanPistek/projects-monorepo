@@ -186,7 +186,7 @@ impl Affine {
     /// Flip Y around the X axis then shift so the former top becomes Y=0 and Y increases upward.
     /// `height_mm` is the source document height in millimetres before the flip.
     pub fn svg_y_up(height_mm: f64) -> Self {
-        Self::translate(0.0, height_mm).then(Self::scale(1.0, -1.0))
+        Self::scale(1.0, -1.0).then(Self::translate(0.0, height_mm))
     }
 
     pub fn then(self, next: Self) -> Self {

@@ -5,7 +5,7 @@ use dxf::enums::AcadVersion;
 use dxf::Drawing;
 use laser_core::{
     aci_to_rgb, Affine, Bounds2D, DocumentId, EntityCount, ImportReport, ImportResult,
-    ImportWarning, LengthUnit, ObjectId, PathGeometry, PathObject, PathSegment, PointMm,
+    ImportWarning, ObjectId, PathGeometry, PathObject, PathSegment, PointMm,
     SourceFormat, SourceMetadata, SourceStyle, Subpath, UnitCertainty, UnitMetadata,
     VectorDocument, Rgba8,
 };
@@ -220,7 +220,7 @@ fn convert_entity(entity: &EntityType, xf: Affine) -> Converted {
             xf,
         ),
         EntityType::Polyline(poly) => polyline_from_vertices(
-            poly.vertices.iter().map(|v| (v.location.x, v.location.y, v.bulge)),
+            poly.vertices().map(|v| (v.location.x, v.location.y, v.bulge)),
             poly.is_closed(),
             xf,
         ),
@@ -397,19 +397,14 @@ fn entity_type_name(entity: &EntityType) -> &'static str {
         EntityType::Insert(_) => "INSERT",
         EntityType::Text(_) => "TEXT",
         EntityType::MText(_) => "MTEXT",
-        EntityType::Hatch(_) => "HATCH",
         _ => "OTHER",
     }
 }
 
 fn resolve_color(common: &dxf::entities::EntityCommon, layer: Option<&dxf::tables::Layer>) -> Option<Rgba8> {
-    let idx = common.color.index();
-    match idx {
-        Some(0) => None, // ByBlock — MVP treats as unknown
-        Some(256) | None => layer.and_then(|l| {
-            l.color.index().and_then(aci_to_rgb)
-        }),
+    match common.color.index() {
         Some(i) => aci_to_rgb(i as i16),
+        None => layer.and_then(|l| l.color.index().and_then(|i| aci_to_rgb(i as i16))),
     }
 }
 

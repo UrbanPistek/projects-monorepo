@@ -1,5 +1,5 @@
 use laser_core::{MachineSettings, PointMm};
-use laser_planner::{MotionOp, MotionPlan};
+use laser_planner::MotionPlan;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

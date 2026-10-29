@@ -10,7 +10,7 @@ pub mod style;
 pub mod units;
 
 pub use color::{
-    aci_to_rgb, match_color, standard_palette, ColorPreset, Rgba8, DEFAULT_COLOR_TOLERANCE,
+    aci_to_rgb, match_color, standard_palette, ColorMatch, ColorPreset, Rgba8, DEFAULT_COLOR_TOLERANCE,
 };
 pub use document::{EntityCount, ImportReport, ImportResult, PathObject, VectorDocument};
 pub use error::CoreError;
