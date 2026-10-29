@@ -1,0 +1,10 @@
+[package]
+name = "laser-import-dxf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+laser-core.workspace = true
+laser-import.workspace = true
+dxf = "0.6"

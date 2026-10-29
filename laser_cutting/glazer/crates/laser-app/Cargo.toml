@@ -1,0 +1,21 @@
+[package]
+name = "laser-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+laser-core.workspace = true
+laser-estimator.workspace = true
+laser-gcode.workspace = true
+laser-import.workspace = true
+laser-import-dxf.workspace = true
+laser-import-svg.workspace = true
+laser-planner.workspace = true
+laser-profile-grbl.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

@@ -1,0 +1,23 @@
+[package]
+name = "glazer"
+version.workspace = true
+edition.workspace = true
+description = "Vector-first laser CAM"
+authors.workspace = true
+license.workspace = true
+
+[lib]
+name = "glazer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+laser-app.workspace = true
+laser-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"

@@ -1,0 +1,10 @@
+[package]
+name = "laser-import-svg"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+laser-core.workspace = true
+laser-import.workspace = true
+usvg = "0.45"

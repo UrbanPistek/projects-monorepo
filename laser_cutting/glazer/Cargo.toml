@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "src-tauri",
+    "crates/laser-core",
+    "crates/laser-import",
+    "crates/laser-import-svg",
+    "crates/laser-import-dxf",
+    "crates/laser-planner",
+    "crates/laser-gcode",
+    "crates/laser-profile-grbl",
+    "crates/laser-estimator",
+    "crates/laser-app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Glazer"]
+
+[workspace.dependencies]
+laser-core = { path = "crates/laser-core" }
+laser-import = { path = "crates/laser-import" }
+laser-import-svg = { path = "crates/laser-import-svg" }
+laser-import-dxf = { path = "crates/laser-import-dxf" }
+laser-planner = { path = "crates/laser-planner" }
+laser-gcode = { path = "crates/laser-gcode" }
+laser-profile-grbl = { path = "crates/laser-profile-grbl" }
+laser-estimator = { path = "crates/laser-estimator" }
+laser-app = { path = "crates/laser-app" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

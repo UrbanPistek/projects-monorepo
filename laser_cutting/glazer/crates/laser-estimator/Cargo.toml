@@ -1,0 +1,10 @@
+[package]
+name = "laser-estimator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+laser-core.workspace = true
+laser-planner.workspace = true
+serde.workspace = true
