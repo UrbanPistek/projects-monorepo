@@ -109,11 +109,13 @@
       <CanvasView bind:this={canvas} />
       {#if $estimate}
         <div class="overlay">
-          <button class="overlay-toggle" onclick={() => (estimateExpanded = !estimateExpanded)}>
-            est. total {fmtMin($estimate.totalMinutes)} ({$estimate.confidence})
-            {estimateExpanded ? "▾" : "▸"}
-          </button>
-          <Tip text={$estimate.assumptions.join("\n") || "No assumptions recorded."} />
+          <div class="overlay-head">
+            <button class="overlay-toggle" onclick={() => (estimateExpanded = !estimateExpanded)}>
+              est. total {fmtMin($estimate.totalMinutes)} ({$estimate.confidence})
+              {estimateExpanded ? "▾" : "▸"}
+            </button>
+            <Tip text={$estimate.assumptions.join("\n") || "No assumptions recorded."} />
+          </div>
           {#if estimateExpanded && breakdown.length}
             <div class="overlay-breakdown">
               {#each breakdown as layer (layer.layerId)}
@@ -170,14 +172,20 @@
   .overlay {
     position: absolute;
     left: 8px;
-    bottom: 8px;
+    top: 8px;
     display: flex;
-    align-items: center;
-    gap: 6px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     background: #121418cc;
     padding: 4px 8px;
     border-radius: 4px;
     max-width: calc(100% - 16px);
+  }
+  .overlay-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .overlay-toggle {
     background: transparent;
@@ -189,12 +197,14 @@
     color: var(--text);
     border: none;
   }
+  /* Expanded breakdown renders below the "est. total" line, full width. */
   .overlay-breakdown {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    border-left: 1px solid var(--border);
-    padding-left: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 4px;
+    width: 100%;
     font-size: 11px;
   }
   .breakdown-row {
