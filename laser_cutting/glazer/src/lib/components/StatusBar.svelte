@@ -9,18 +9,17 @@
 <footer class="status">
   {#if $summary}
     <span>{$summary.fileName}</span>
-    <span>{$summary.objectCount} objects</span>
-    <span>{$summary.layerCount} layers</span>
+    <span>{$summary.objectCount} Objects</span>
+    <span>{$summary.layerCount} Layers</span>
     <span>
       {($summary.bounds.max.x - $summary.bounds.min.x).toFixed(2)} ×
       {($summary.bounds.max.y - $summary.bounds.min.y).toFixed(2)} mm
     </span>
-    <span>units: {$summary.units.certainty}</span>
-    <span>selected {$selectedIds.length}</span>
+    <span>Selected {$selectedIds.length}</span>
     {#if $estimate}
-      <span>cut {fmtMin($estimate.cutMinutes)}</span>
-      <span>est. total {fmtMin($estimate.totalMinutes)} ({$estimate.confidence})</span>
-      <span>paths {$estimate.pathCount}</span>
+      <span>Cut {fmtMin($estimate.cutMinutes)}</span>
+      <span>Est. Total: {fmtMin($estimate.totalMinutes)}</span>
+      <span>Paths {$estimate.pathCount}</span>
     {/if}
     <span>{$summary.profileId}</span>
     {#if $validation && !$validation.ok}

@@ -37,7 +37,7 @@
       {#if $estimate}
         <div class="overlay">
           <button class="overlay-toggle" onclick={() => (estimateExpanded = !estimateExpanded)}>
-            est. total {fmtMin($estimate.totalMinutes)} ({$estimate.confidence})
+            Est. Total Time: {fmtMin($estimate.totalMinutes)}
             {estimateExpanded ? "▾" : "▸"}
           </button>
           <Tip text={$estimate.assumptions.join("\n") || "No assumptions recorded."} />
