@@ -96,7 +96,7 @@ export interface ProcessLayer {
   order: number;
   visible: boolean;
   exportEnabled: boolean;
-  operation: "cut" | "engraveLine" | "frame" | "travelOnly";
+  operation: "cut" | "engraveLine" | "travelOnly";
   speedMmMin: number;
   powerPercent: number;
   passes: number;
@@ -104,6 +104,8 @@ export interface ProcessLayer {
   sourceAssignment: AssignmentRule;
   laserMustRemainOff: boolean;
   frameMarginMm: number;
+  /** True for the frame layer (a travel-only layer tracing the drawing outline). */
+  isFrame: boolean;
 }
 
 export interface Project {

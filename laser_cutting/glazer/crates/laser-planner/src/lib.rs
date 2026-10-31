@@ -129,7 +129,7 @@ pub fn plan_project(project: &Project, options: PlanOptions) -> Result<MotionPla
         ops.push(MotionOp::Comment {
             text: format!("Layer: {}", layer.name),
         });
-        if layer.operation == OperationKind::Frame {
+        if layer.is_frame {
             let frame_stats = emit_frame(project, &layer, &mut ops, &mut cursor, &mut all_pts)?;
             stats.push(frame_stats);
             continue;
@@ -242,7 +242,7 @@ pub fn frame_bounds(project: &Project, layer: &ProcessLayer) -> Result<Option<Bo
         }
         if let Some(id) = obj.layer_id {
             if let Some(src) = project.layer(id) {
-                if !src.export_enabled || src.operation == OperationKind::Frame {
+                if !src.export_enabled || src.is_frame {
                     continue;
                 }
             }

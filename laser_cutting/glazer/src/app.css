@@ -91,6 +91,9 @@ button.primary {
 .panel h2 {
   margin: 0;
   padding: 10px 12px;
+  /* Fixed height so the Layers and Properties titles are always the same
+     height, even when one contains a button (e.g. "+ New layer"). */
+  height: 40px;
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -100,6 +103,7 @@ button.primary {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex: none;
 }
 
 .layer-row {

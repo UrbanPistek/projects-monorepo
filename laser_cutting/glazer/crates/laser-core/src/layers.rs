@@ -6,10 +6,11 @@
 //! path can be moved between layers at any time.
 //!
 //! Two special layers exist:
-//! - the **frame** layer (`OperationKind::Frame`), always first in the stack,
-//!   which traces a dashed rectangle around the drawing with the laser off
-//!   (`laser_must_remain_off` is enforced by validation — a frame must never
-//!   fire the laser, that is a safety property, not a preference);
+//! - the **frame** layer (`is_frame: true`, always first in the stack), which
+//!   traces a dashed rectangle around the drawing with the laser off. Its
+//!   operation is `TravelOnly` — a frame is just a travel-only layer with a
+//!   margin; `laser_must_remain_off` is enforced by validation, because a
+//!   frame must never fire the laser (a safety property, not a preference);
 //! - the grey **Unassigned** layer (`AssignmentRule::Unassigned`), the sink
 //!   for colour-less paths and for paths of deleted layers. It cannot be
 //!   deleted and is not exported by default.
@@ -20,13 +21,13 @@ use crate::color::Rgba8;
 use crate::error::{check_finite, CoreError};
 use crate::ids::LayerId;
 
-/// What the laser does for paths on a layer.
+/// What the laser does for paths on a layer. Frame layers use `TravelOnly`
+/// and are marked separately via `ProcessLayer::is_frame`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum OperationKind {
     Cut,
     EngraveLine,
-    Frame,
     TravelOnly,
 }
 
@@ -67,9 +68,13 @@ pub struct ProcessLayer {
     pub passes: u32,
     pub laser_mode: LaserMode,
     pub source_assignment: AssignmentRule,
-    /// Frame operations must never enable the laser.
+    /// Frame layers must never enable the laser.
     pub laser_must_remain_off: bool,
     pub frame_margin_mm: f64,
+    /// Marks the frame layer (a travel-only layer that traces the drawing
+    /// outline). `#[serde(default)]` keeps older project files loadable.
+    #[serde(default)]
+    pub is_frame: bool,
 }
 
 impl ProcessLayer {
@@ -87,17 +92,26 @@ impl ProcessLayer {
             passes: 1,
             laser_mode: LaserMode::Dynamic,
             source_assignment: AssignmentRule::Manual,
-            laser_must_remain_off: operation == OperationKind::Frame,
+            laser_must_remain_off: false,
             frame_margin_mm: 2.0,
+            is_frame: false,
         }
     }
 
+    /// The frame layer: a travel-only layer (laser always off) that traces a
+    /// dashed rectangle around the drawing, expanded by `margin_mm`.
     pub fn frame(order: u32, margin_mm: f64) -> Self {
-        let mut layer = Self::new("Frame", Rgba8::rgb(255, 160, 0), order, OperationKind::Frame);
+        let mut layer = Self::new(
+            "Frame",
+            Rgba8::rgb(255, 160, 0),
+            order,
+            OperationKind::TravelOnly,
+        );
         layer.laser_must_remain_off = true;
         layer.power_percent = 0.0;
         layer.frame_margin_mm = margin_mm;
         layer.source_assignment = AssignmentRule::Manual;
+        layer.is_frame = true;
         layer
     }
 
@@ -145,14 +159,19 @@ impl ProcessLayer {
                 self.name
             )));
         }
-        if self.laser_must_remain_off && self.operation != OperationKind::Frame {
+        if self.is_frame && self.operation != OperationKind::TravelOnly {
             return Err(CoreError::Invalid(
-                "laser_must_remain_off is only valid for frame operations".into(),
+                "frame layers must use the travel-only operation".into(),
             ));
         }
-        if self.operation == OperationKind::Frame && !self.laser_must_remain_off {
+        if self.laser_must_remain_off && !self.is_frame {
             return Err(CoreError::Invalid(
-                "frame operations must keep the laser off".into(),
+                "laser_must_remain_off is only valid for frame layers".into(),
+            ));
+        }
+        if self.is_frame && !self.laser_must_remain_off {
+            return Err(CoreError::Invalid(
+                "frame layers must keep the laser off".into(),
             ));
         }
         Ok(())

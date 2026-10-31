@@ -263,7 +263,7 @@ pub fn assign_objects(project: &mut Project, ids: &[ObjectId], layer_id: LayerId
 pub fn update_layer(project: &mut Project, layer: ProcessLayer) -> Result<(), AppError> {
     layer.validate()?;
     if let Some(existing) = project.layer_mut(layer.id) {
-        if existing.operation == OperationKind::Frame {
+        if existing.is_frame {
             // Frame layers are fixed except for the safe-to-change fields:
             // passes, speed, frame margin, and the visibility/export toggles
             // (the frame outline itself scales with the job-level scale).
@@ -278,12 +278,18 @@ pub fn update_layer(project: &mut Project, layer: ProcessLayer) -> Result<(), Ap
             merged.validate()?;
             *existing = merged;
         } else {
-            if layer.operation == OperationKind::Frame {
+            if layer.is_frame {
                 return Err(AppError::Failed(
                     "frame layers are created with the Add frame button".into(),
                 ));
             }
             *existing = layer;
+        }
+        // Travel-only and frame layers must never fire the laser. Force power
+        // to 0 so the S value emitted for them is 0 (S = power% x machine max
+        // S), regardless of what the incoming struct claimed.
+        if existing.is_frame || existing.operation == OperationKind::TravelOnly {
+            existing.power_percent = 0.0;
         }
         Ok(())
     } else {
@@ -358,7 +364,7 @@ pub fn create_layer_from_selection(
 }
 
 pub fn add_frame(project: &mut Project, margin_mm: f64) -> LayerId {
-    project.layers.retain(|l| l.operation != OperationKind::Frame);
+    project.layers.retain(|l| !l.is_frame);
     let order = 0u32;
     for layer in &mut project.layers {
         layer.order += 1;
@@ -473,7 +479,7 @@ pub fn preview_geometry(project: &Project) -> PreviewGeometry {
     let frame = project
         .layers
         .iter()
-        .find(|l| l.operation == OperationKind::Frame && l.visible)
+        .find(|l| l.is_frame && l.visible)
         .and_then(|l| {
             frame_bounds(project, l)
                 .ok()
@@ -552,7 +558,7 @@ pub fn validate_project(project: &Project) -> ValidationReport {
         o.export_enabled
             && o.layer_id
                 .and_then(|id| project.layer(id))
-                .map(|l| l.export_enabled && l.operation != OperationKind::Frame)
+                .map(|l| l.export_enabled && !l.is_frame)
                 .unwrap_or(false)
     });
     if !exportable {
@@ -785,9 +791,24 @@ mod tests {
         // A normal layer cannot be turned into a frame via update_layer.
         let other = p.document.objects[0].layer_id.unwrap();
         let mut incoming = p.layer(other).unwrap().clone();
-        incoming.operation = OperationKind::Frame;
+        incoming.is_frame = true;
         incoming.laser_must_remain_off = true;
+        incoming.operation = OperationKind::TravelOnly;
         assert!(update_layer(&mut p, incoming).is_err());
+    }
+
+    #[test]
+    fn frame_layer_operation_is_travel_only() {
+        let mut p = project_with_red_line();
+        split_layers_by_color(&mut p, true);
+        let frame_id = add_frame(&mut p, 2.0);
+        let frame = p.layer(frame_id).unwrap();
+        assert!(frame.is_frame);
+        assert_eq!(frame.operation, OperationKind::TravelOnly);
+        assert!(frame.laser_must_remain_off);
+        assert_eq!(frame.power_percent, 0.0);
+        // And the whole project still validates.
+        p.validate_layers().unwrap();
     }
 
     #[test]
@@ -807,6 +828,28 @@ mod tests {
         let json = serde_json::to_string(&p).unwrap();
         let back: Project = serde_json::from_str(&json).unwrap();
         assert!(!back.layer(frame_id).unwrap().visible);
+    }
+
+    #[test]
+    fn travel_and_frame_operations_force_power_zero() {
+        let mut p = project_with_red_line();
+        split_layers_by_color(&mut p, true);
+        let layer_id = p.document.objects[0].layer_id.unwrap();
+        // Switching to travel-only zeroes the power even if the caller
+        // sent a non-zero value.
+        let mut incoming = p.layer(layer_id).unwrap().clone();
+        incoming.operation = OperationKind::TravelOnly;
+        incoming.power_percent = 80.0;
+        update_layer(&mut p, incoming).unwrap();
+        let layer = p.layer(layer_id).unwrap();
+        assert_eq!(layer.operation, OperationKind::TravelOnly);
+        assert_eq!(layer.power_percent, 0.0);
+        // Frame layers keep power at 0 as well.
+        let frame_id = add_frame(&mut p, 2.0);
+        let mut incoming = p.layer(frame_id).unwrap().clone();
+        incoming.power_percent = 55.0;
+        update_layer(&mut p, incoming).unwrap();
+        assert_eq!(p.layer(frame_id).unwrap().power_percent, 0.0);
     }
 
     #[test]

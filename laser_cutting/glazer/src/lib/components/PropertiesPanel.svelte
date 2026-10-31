@@ -26,10 +26,23 @@
     return [...p.layers].sort((a, b) => a.order - b.order)[0];
   });
 
-  // Frame layers are fixed except passes, speed and frame margin; their
-  // outline scales with the job-level Scale in the Job section below.
-  // Locked fields are rendered disabled + dimmed with a lock icon.
-  let isFrame = $derived(selectedLayer?.operation === "frame");
+  // Frame layers (isFrame, operation travel-only) are fixed except passes,
+  // speed and frame margin; their outline scales with the job-level Scale in
+  // the Job section below. Locked fields render disabled + dimmed with 🔒.
+  let isFrame = $derived(selectedLayer?.isFrame ?? false);
+  // Travel-only layers never fire the laser either: power is forced to 0
+  // (server-side too), so the S value for them is 0.
+  let isLaserOff = $derived(isFrame || selectedLayer?.operation === "travelOnly");
+
+  // Changing the operation to travel-only also zeroes the power (frame
+  // layers are not selectable here — they are created via "Add frame").
+  function changeOperation(op: ProcessLayer["operation"]) {
+    if (op === "travelOnly") {
+      patch({ operation: op, powerPercent: 0 });
+    } else {
+      patch({ operation: op });
+    }
+  }
 
   async function patch(partial: Partial<ProcessLayer>) {
     if (!selectedLayer) return;
@@ -58,13 +71,12 @@
     </label>
     <label class="field" class:locked={isFrame}>
       <span class="field-title">Operation
-        <Tip text="What the laser does for paths on this layer: cut/engrave with the laser on, travel with the laser off, or frame (a dashed outline traced with the laser off). Frame layers are created with the Add frame button and cannot be changed here." />
+        <Tip text="What the laser does for paths on this layer: cut/engrave with the laser on, or travel with the laser off (power is forced to 0). Frame layers are not created here — use the Add frame button in the toolbar." />
         {#if isFrame}<span class="lock">🔒</span>{/if}
       </span>
-      <select disabled={isFrame} value={selectedLayer.operation} onchange={(e) => patch({ operation: e.currentTarget.value as ProcessLayer["operation"] })}>
+      <select disabled={isFrame} value={selectedLayer.operation} onchange={(e) => changeOperation(e.currentTarget.value as ProcessLayer["operation"])}>
         <option value="cut">Cut</option>
         <option value="engraveLine">Engrave line</option>
-        <option value="frame">Frame</option>
         <option value="travelOnly">Travel only</option>
       </select>
     </label>
@@ -74,12 +86,12 @@
       </span>
       <input type="number" min="1" value={selectedLayer.speedMmMin} onchange={(e) => patch({ speedMmMin: Number(e.currentTarget.value) })} />
     </label>
-    <label class="field" class:locked={isFrame}>
+    <label class="field" class:locked={isLaserOff}>
       <span class="field-title">Power (%)
-        <Tip text="Laser duty cycle as a percentage, scaled against the machine Max S (GRBL $30) when exporting. Fixed at 0 for frame layers so the frame never fires the laser." />
-        {#if isFrame}<span class="lock">🔒</span>{/if}
+        <Tip text="Laser duty cycle as a percentage, scaled against the machine Max S (GRBL $30) when exporting — S = power% × Max S. Forced to 0 for frame and travel-only layers so they never fire the laser." />
+        {#if isLaserOff}<span class="lock">🔒</span>{/if}
       </span>
-      <input type="number" min="0" max="100" disabled={isFrame} value={selectedLayer.powerPercent} onchange={(e) => patch({ powerPercent: Number(e.currentTarget.value) })} />
+      <input type="number" min="0" max="100" disabled={isLaserOff} value={selectedLayer.powerPercent} onchange={(e) => patch({ powerPercent: Number(e.currentTarget.value) })} />
     </label>
     <label class="field">
       <span class="field-title">Passes
