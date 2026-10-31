@@ -1,3 +1,7 @@
+// Typed wrappers around the Tauri IPC commands exposed by src-tauri/src/commands.rs.
+// The TypeScript interfaces here mirror the serde (camelCase) shapes of the
+// Rust structs in laser-core / laser-app / laser-estimator — keep them in sync.
+
 import { invoke } from "@tauri-apps/api/core";
 
 export type LengthUnit =
@@ -60,10 +64,29 @@ export interface PreviewObject {
   lengthMm: number;
 }
 
+export interface FramePreview {
+  bounds: Bounds2D;
+  passes: number;
+  speedMmMin: number;
+  marginMm: number;
+}
+
 export interface PreviewGeometry {
   objects: PreviewObject[];
   bounds: Bounds2D;
   documentBounds: Bounds2D;
+  /** Rectangle the frame layer traces; drawn dashed orange on top. */
+  frame: FramePreview | null;
+}
+
+/** How a layer relates to source colours: manual, bound to one colour, or the Unassigned sink. */
+export type AssignmentRule =
+  | "manual"
+  | "unassigned"
+  | { color: { hex: string; tolerance: number } };
+
+export function isUnassignedRule(rule: AssignmentRule): boolean {
+  return rule === "unassigned";
 }
 
 export interface ProcessLayer {
@@ -78,7 +101,7 @@ export interface ProcessLayer {
   powerPercent: number;
   passes: number;
   laserMode: "constant" | "dynamic";
-  sourceAssignment: unknown;
+  sourceAssignment: AssignmentRule;
   laserMustRemainOff: boolean;
   frameMarginMm: number;
 }
@@ -115,7 +138,21 @@ export interface Project {
     maxSValue: number;
   };
   export: { profileId: string; includeFrameInEstimate: boolean };
-  display: { gridEnabled: boolean; colorTolerance: number };
+  display: {
+    displayUnit: LengthUnit;
+    gridEnabled: boolean;
+    snapToGrid: boolean;
+    colorTolerance: number;
+    gridBackground: "dark" | "offWhite";
+  };
+}
+
+export interface DisplaySettings {
+  displayUnit: LengthUnit;
+  gridEnabled: boolean;
+  snapToGrid: boolean;
+  colorTolerance: number;
+  gridBackground: "dark" | "offWhite";
 }
 
 export interface EstimateReport {
@@ -130,9 +167,13 @@ export interface EstimateReport {
   assumptions: string[];
   warnings: string[];
   layers: Array<{
+    layerId: string;
     name: string;
     cutLengthMm: number;
     travelLengthMm: number;
+    cutMinutes: number;
+    travelMinutes: number | null;
+    totalMinutes: number | null;
     pathCount: number;
     passes: number;
   }>;
@@ -200,6 +241,18 @@ export async function assignObjects(objectIds: string[], layerId: string) {
 
 export async function autoAssign(apply: boolean) {
   return invoke<ColorAssignmentPreview>("auto_assign_by_color", { apply });
+}
+
+export async function deleteLayer(layerId: string) {
+  return invoke<void>("delete_layer", { layerId });
+}
+
+export async function updateDisplay(display: DisplaySettings) {
+  return invoke<void>("update_display", { display });
+}
+
+export async function setGridBackground(gridBackground: "dark" | "offWhite") {
+  return invoke<void>("set_grid_background", { background: gridBackground });
 }
 
 export async function reorderLayers(orderedIds: string[]) {

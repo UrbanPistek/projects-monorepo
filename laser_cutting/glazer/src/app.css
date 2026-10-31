@@ -138,3 +138,14 @@ canvas.preview {
   height: 100%;
   background: #0e1116;
 }
+
+/* Off-white "paper" grid theme (toolbar toggle). */
+canvas.preview.light {
+  background: #f5f1e6;
+}
+
+/* Layer row that is selected or owns a selected path. */
+.layer-row.active {
+  background: var(--panel-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}

@@ -1,5 +1,14 @@
+//! # Core error type
+//!
+//! One error enum for the whole engine. Every variant serializes to a stable
+//! `{ code, message }` pair so the Tauri frontend can show machine-readable
+//! error codes next to human-readable text.
+
 use serde::Serialize;
 
+/// Errors from geometry/model validation. Deliberately small: anything that
+/// can go wrong in the core is either a bad number, an absurd extent, or a
+/// caller bug surfaced as `Invalid`.
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
     #[error("non-finite coordinate or numeric value")]

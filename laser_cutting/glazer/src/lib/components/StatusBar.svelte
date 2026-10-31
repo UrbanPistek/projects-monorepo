@@ -1,12 +1,9 @@
 <script lang="ts">
+  // Bottom status bar: file summary, object/layer counts, bounds, unit
+  // certainty, selection count, the headline estimate, and the first
+  // validation error or import warning.
   import { summary, estimate, validation, selectedIds, preview } from "$lib/stores/session";
-
-  function fmtMin(v: number | null | undefined) {
-    if (v == null) return "n/a";
-    const s = v * 60;
-    if (s < 60) return `${s.toFixed(1)}s`;
-    return `${Math.floor(v)}m ${((v % 1) * 60).toFixed(0)}s`;
-  }
+  import { fmtMin } from "$lib/format";
 </script>
 
 <footer class="status">

@@ -250,9 +250,11 @@ struct ProcessLayer {
 
 Keep `visible` separate from `export_enabled`: a user can hide a layer to inspect the design without accidentally disabling its export. Hidden layers should remain in the project. The UI must make it obvious which layers will be exported.
 
-### 7.1 Color presets and automatic assignment
+### 7.1 Colour-based automatic layer generation
 
-Begin with a documented standard palette, for example:
+**Implemented behavior (updated):** a layer is a process container, not a colour. On import, paths are automatically split into one layer per *distinct source colour* (`split_layers_by_color` in `laser-app`); the toolbar button **Assign by color** re-runs the same split and overwrites manual assignments. A layer may hold paths of several colours, and any path can be moved to any layer manually.
+
+The legacy palette below is retained only as a matching hint: a colour within tolerance of red defaults the auto-created layer to a *cut* operation, everything else defaults to *engrave-line*.
 
 | Preset | Color | Suggested default use (customizable) |
 |---|---|---|
@@ -265,16 +267,14 @@ Begin with a documented standard palette, for example:
 | Black | `#000000` | Unassigned/engrave candidate |
 | White | `#FFFFFF` | Unassigned/disabled candidate |
 
-These are **application presets**, not machine standards. Users must be able to rename them, change their colors, and change each layer's process settings.
-
-Automatic assignment should:
+Automatic assignment:
 
 1. Extract the source stroke color, falling back to fill color only when there is no usable stroke, while preserving both styles.
 2. Resolve inherited SVG styles and DXF ByLayer colors in the importer.
-3. Match source color to a preset using a configurable tolerance. Start with a simple, documented color-distance rule; consider perceptual Lab/Delta-E matching later if users need it.
-4. Put unmatched colors in an “Unassigned” group rather than silently merging them into a layer.
-5. Show the user a preview/count for each match before applying it.
-6. Allow explicit manual assignment to override automatic matching.
+3. Group paths by exact source colour (one layer per distinct colour); use the palette + tolerance only to pick the default operation.
+4. Put colour-less paths in the grey **Unassigned** group, which always exists, is not exported by default, and cannot be deleted (deleting another layer moves its paths there).
+5. Show the user a preview/count for each match before applying it (`auto_assign_by_color` with `apply=false`).
+6. Allow explicit manual assignment to override automatic matching; the toolbar button intentionally overwrites manual assignments, import does not.
 
 ### 7.2 Manual assignment and selection
 

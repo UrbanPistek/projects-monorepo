@@ -1,3 +1,13 @@
+//! # GRBL 1.1 postprocessor
+//!
+//! The concrete [`FirmwareProfile`] for GRBL 1.1 (the most common hobby-laser
+//! firmware): millimetre units (G21), absolute positioning (G90), G0 rapids,
+//! 3-decimal coordinates, M3/M4/M5 laser control. Power percent is mapped
+//! through the machine's max S (GRBL `$30`) via `map_power_percent`.
+//!
+//! Safety: the profile validates that no motion happens while the laser is
+//! on unless it is a `LaserMoveTo`, and frame sections never contain M3/M4.
+
 use laser_core::MachineSettings;
 use laser_gcode::{
     fmt_coord, map_power_percent, validate_program, FirmwareCapabilities, FirmwareProfile,
@@ -5,6 +15,7 @@ use laser_gcode::{
 };
 use laser_planner::{MotionOp, MotionPlan};
 
+/// Profile id stored in `ExportSettings` and project files.
 pub const PROFILE_ID: &str = "grbl-1.1";
 
 pub struct Grbl11Profile {
@@ -243,10 +254,19 @@ mod tests {
             source_file_name: "t".into(),
         };
         let mut project = Project::from_document(document);
-        let id = project.layers[0].id;
-        project.layers[0].speed_mm_min = 600.0;
-        project.layers[0].power_percent = 70.0;
-        project.layers[0].laser_mode = laser_core::LaserMode::Dynamic;
+        // Layers are no longer created from a colour palette on import, so
+        // tests create the process layer they need explicitly.
+        let mut layer = laser_core::ProcessLayer::new(
+            "Cut",
+            laser_core::Rgba8::rgb(255, 0, 0),
+            0,
+            laser_core::OperationKind::Cut,
+        );
+        layer.speed_mm_min = 600.0;
+        layer.power_percent = 70.0;
+        layer.laser_mode = laser_core::LaserMode::Dynamic;
+        let id = layer.id;
+        project.layers.push(layer);
         project.document.objects[0].layer_id = Some(id);
         project.job.offset_mm = PointMm::origin();
         project.job.origin_mode = laser_core::OriginMode::Source;

@@ -1,6 +1,16 @@
+//! # Importer framework
+//!
+//! Format-agnostic import plumbing: the [`VectorImporter`] trait that the SVG
+//! and DXF adapters implement, size/emptiness guards, and [`sniff_and_import`]
+//! which picks the first adapter that claims the file. Adapters convert
+//! everything into the canonical millimetre [`VectorDocument`] from
+//! `laser-core`; unit ambiguity is reported, not guessed (see
+//! `laser-core::units`).
+
 use laser_core::{ImportResult, LengthUnit};
 use serde::{Deserialize, Serialize};
 
+/// Import failures, each with a stable machine-readable code for the UI.
 #[derive(Debug, thiserror::Error)]
 pub enum ImportError {
     #[error("{0}")]

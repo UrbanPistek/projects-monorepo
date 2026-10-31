@@ -1,9 +1,27 @@
+//! # laser-app
+//!
+//! The service layer that glues the engine crates together for the desktop
+//! app **without depending on Tauri**: import → project, layer operations
+//! (assign by colour, delete, reorder, frame), preview geometry, estimation,
+//! validation, G-code export and project save/load. `src-tauri` is a thin
+//! command wrapper over these functions, which keeps all logic unit-testable
+//! as plain Rust.
+//!
+//! Key behaviours implemented here:
+//! - importing a file auto-splits paths into one layer per distinct source
+//!   colour (`split_layers_by_color`);
+//! - "Assign by color" re-runs that split and overwrites manual assignments;
+//! - deleting a layer moves its paths to the grey Unassigned layer;
+//! - frame layers are locked server-side (only passes/speed are editable);
+//! - exports are written atomically (`.partial` + rename) so a crash never
+//!   leaves a half-written G-code file.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use laser_core::{
-    match_color, ColorMatch, ImportResult, LayerId, ObjectId, OperationKind, OriginMode,
-    ProcessLayer, Project, PROJECT_SCHEMA_VERSION, Rgba8,
+    match_color, AssignmentRule, Bounds2D, ImportResult, LayerId, ObjectId, OperationKind,
+    OriginMode, ProcessLayer, Project, PROJECT_SCHEMA_VERSION, Rgba8,
 };
 use laser_estimator::estimate;
 pub use laser_estimator::EstimateReport;
@@ -11,7 +29,9 @@ use laser_gcode::{FirmwareProfile, PostprocessSettings, PowerMode};
 use laser_import::{sniff_and_import, ImportError, ImportOptions};
 use laser_import_dxf::DxfImporter;
 use laser_import_svg::SvgImporter;
-use laser_planner::{plan_project, transformed_preview_polylines, MotionPlan, PlanError, PlanOptions};
+use laser_planner::{
+    frame_bounds, plan_project, transformed_preview_polylines, MotionPlan, PlanError, PlanOptions,
+};
 use laser_profile_grbl::Grbl11Profile;
 use serde::{Deserialize, Serialize};
 
@@ -78,7 +98,9 @@ pub fn import_bytes(
 
 pub fn open_project_from_import(result: ImportResult) -> Project {
     let mut project = Project::from_document(result.document);
-    apply_color_assignment(&mut project, false);
+    // Import automatically splits paths into one layer per distinct source
+    // colour, but only fills in paths that are not assigned yet.
+    split_layers_by_color(&mut project, false);
     project
 }
 
@@ -105,51 +127,92 @@ pub struct UnmatchedColor {
     pub object_ids: Vec<ObjectId>,
 }
 
-pub fn preview_color_assignment(project: &Project) -> ColorAssignmentPreview {
-    let presets = laser_core::standard_palette();
-    let tolerance = project.display.color_tolerance;
-    let mut groups: Vec<ColorAssignmentGroup> = presets
-        .iter()
-        .map(|p| ColorAssignmentGroup {
-            layer_name: p.name.clone(),
-            color: p.color,
-            object_ids: vec![],
-            count: 0,
-        })
-        .collect();
-    let mut unmatched: Vec<UnmatchedColor> = Vec::new();
+/// Display name for an auto-generated colour layer, e.g. `Red #FF0000`.
+fn color_layer_name(color: Rgba8) -> String {
+    let named = match_color(color, &laser_core::standard_palette(), laser_core::DEFAULT_COLOR_TOLERANCE)
+        .map(|m| m.preset_name);
+    match named {
+        Some(name) if name == "Cut" => format!("Cut {}", color.to_hex()),
+        Some(name) => format!("{} {}", name, color.to_hex()),
+        None => format!("Color {}", color.to_hex()),
+    }
+}
+
+/// Group paths by their exact source colour. Each distinct colour becomes one
+/// entry in `matches`; paths with no stroke/fill colour are not listed (they
+/// belong to the Unassigned layer).
+pub fn preview_color_split(project: &Project) -> ColorAssignmentPreview {
+    let mut groups: Vec<ColorAssignmentGroup> = Vec::new();
+    let unmatched: Vec<UnmatchedColor> = Vec::new();
 
     for obj in &project.document.objects {
         let Some(color) = obj.style.assignment_color() else {
             continue;
         };
-        if let Some(ColorMatch { preset_name, .. }) = match_color(color, &presets, tolerance) {
-            if let Some(g) = groups.iter_mut().find(|g| g.layer_name == preset_name) {
-                g.object_ids.push(obj.id);
-                g.count += 1;
-            }
-        } else if let Some(u) = unmatched.iter_mut().find(|u| u.color == color) {
-            u.object_ids.push(obj.id);
+        if let Some(g) = groups.iter_mut().find(|g| g.color == color) {
+            g.object_ids.push(obj.id);
+            g.count += 1;
         } else {
-            unmatched.push(UnmatchedColor {
+            groups.push(ColorAssignmentGroup {
+                layer_name: color_layer_name(color),
                 color,
                 object_ids: vec![obj.id],
+                count: 1,
             });
         }
     }
-    ColorAssignmentPreview { matches: groups, unmatched }
+    ColorAssignmentPreview {
+        matches: groups,
+        unmatched,
+    }
 }
 
-pub fn apply_color_assignment(project: &mut Project, overwrite_manual: bool) -> ColorAssignmentPreview {
-    let preview = preview_color_assignment(project);
+/// The "Assign by color" feature: one layer per distinct source colour,
+/// created on demand and linked to its colour via `AssignmentRule::Color`.
+/// Layers are plain process containers — a layer may hold paths of several
+/// colours, and a path may be moved to any layer manually afterwards.
+///
+/// `overwrite_manual = true` moves *all* matching paths (used by the toolbar
+/// button); `false` only fills in still-unassigned paths (used on import).
+pub fn split_layers_by_color(project: &mut Project, overwrite_manual: bool) -> ColorAssignmentPreview {
+    let preview = preview_color_split(project);
+    let unassigned_id = ensure_unassigned_layer(project);
+    let tolerance = project.display.color_tolerance;
+
     for group in &preview.matches {
-        let Some(layer_id) = project
-            .layers
-            .iter()
-            .find(|l| l.name == group.layer_name)
-            .map(|l| l.id)
-        else {
-            continue;
+        // Reuse an existing layer bound to this colour, else create one.
+        let layer_id = match project.layers.iter().find(|l| {
+            matches!(&l.source_assignment, AssignmentRule::Color { hex, .. } if Rgba8::from_hex(hex) == Some(group.color))
+        }) {
+            Some(l) => {
+                let id = l.id;
+                if let Some(l) = project.layer_mut(id) {
+                    l.display_color = group.color;
+                }
+                id
+            }
+            None => {
+                // Keep the old convention: red-ish colours default to a cut,
+                // everything else to an engrave, so bulk assignment does not
+                // silently change the process type of existing artwork.
+                let is_cut = match_color(group.color, &laser_core::standard_palette(), tolerance)
+                    .map(|m| m.preset_name == "Cut")
+                    .unwrap_or(false);
+                let operation = if is_cut {
+                    OperationKind::Cut
+                } else {
+                    OperationKind::EngraveLine
+                };
+                let order = project.layers.iter().map(|l| l.order).max().unwrap_or(0) + 1;
+                let mut layer = ProcessLayer::new(color_layer_name(group.color), group.color, order, operation);
+                layer.source_assignment = AssignmentRule::Color {
+                    hex: group.color.to_hex(),
+                    tolerance,
+                };
+                let id = layer.id;
+                project.layers.push(layer);
+                id
+            }
         };
         for id in &group.object_ids {
             if let Some(obj) = project.document.object_mut(*id) {
@@ -159,7 +222,30 @@ pub fn apply_color_assignment(project: &mut Project, overwrite_manual: bool) -> 
             }
         }
     }
+
+    // Colour-less paths always land in Unassigned.
+    for obj in &mut project.document.objects {
+        if obj.style.assignment_color().is_none() && (overwrite_manual || obj.layer_id.is_none()) {
+            obj.layer_id = Some(unassigned_id);
+        }
+    }
     preview
+}
+
+/// Guarantee the grey "Unassigned" layer exists and return its id.
+pub fn ensure_unassigned_layer(project: &mut Project) -> LayerId {
+    if let Some(l) = project
+        .layers
+        .iter()
+        .find(|l| matches!(l.source_assignment, AssignmentRule::Unassigned))
+    {
+        return l.id;
+    }
+    let order = project.layers.iter().map(|l| l.order).max().unwrap_or(0) + 1;
+    let layer = ProcessLayer::unassigned(order);
+    let id = layer.id;
+    project.layers.push(layer);
+    id
 }
 
 pub fn assign_objects(project: &mut Project, ids: &[ObjectId], layer_id: LayerId) -> Result<(), AppError> {
@@ -177,11 +263,56 @@ pub fn assign_objects(project: &mut Project, ids: &[ObjectId], layer_id: LayerId
 pub fn update_layer(project: &mut Project, layer: ProcessLayer) -> Result<(), AppError> {
     layer.validate()?;
     if let Some(existing) = project.layer_mut(layer.id) {
-        *existing = layer;
+        if existing.operation == OperationKind::Frame {
+            // Frame layers are fixed except for passes and speed (the frame
+            // outline itself scales with the job-level scale). Merge only the
+            // allowed fields so the UI round-trip cannot unlock the rest.
+            let mut merged = existing.clone();
+            merged.passes = layer.passes;
+            merged.speed_mm_min = layer.speed_mm_min;
+            merged.validate()?;
+            *existing = merged;
+        } else {
+            if layer.operation == OperationKind::Frame {
+                return Err(AppError::Failed(
+                    "frame layers are created with the Add frame button".into(),
+                ));
+            }
+            *existing = layer;
+        }
         Ok(())
     } else {
         Err(AppError::Failed("unknown layer".into()))
     }
+}
+
+/// Delete a layer. Its paths are moved to the grey "Unassigned" layer so no
+/// geometry is lost; the Unassigned layer itself can never be deleted.
+pub fn delete_layer(project: &mut Project, layer_id: LayerId) -> Result<(), AppError> {
+    let Some(existing) = project.layer(layer_id) else {
+        return Err(AppError::Failed("unknown layer".into()));
+    };
+    if matches!(existing.source_assignment, AssignmentRule::Unassigned) {
+        return Err(AppError::Failed(
+            "the Unassigned layer cannot be deleted".into(),
+        ));
+    }
+    let unassigned_id = ensure_unassigned_layer(project);
+    for obj in &mut project.document.objects {
+        if obj.layer_id == Some(layer_id) {
+            obj.layer_id = Some(unassigned_id);
+        }
+    }
+    project.layers.retain(|l| l.id != layer_id);
+    // Reindex orders so the remaining layers stay a dense 0..n sequence.
+    let mut ordered: Vec<LayerId> = project
+        .layers
+        .iter()
+        .map(|l| l.id)
+        .collect();
+    ordered.sort_by_key(|id| project.layer(*id).map(|l| l.order).unwrap_or(0));
+    reorder_layers(project, &ordered)?;
+    Ok(())
 }
 
 pub fn reorder_layers(project: &mut Project, ordered_ids: &[LayerId]) -> Result<(), AppError> {
@@ -270,10 +401,22 @@ pub struct PreviewObject {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FramePreview {
+    pub bounds: Bounds2D,
+    pub passes: u32,
+    pub speed_mm_min: f64,
+    pub margin_mm: f64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PreviewGeometry {
     pub objects: Vec<PreviewObject>,
     pub bounds: laser_core::Bounds2D,
     pub document_bounds: laser_core::Bounds2D,
+    /// Rectangle the frame layer will trace, if a frame layer exists.
+    /// Drawn on the canvas as a dashed orange outline on top of everything.
+    pub frame: Option<FramePreview>,
 }
 
 pub fn preview_geometry(project: &Project) -> PreviewGeometry {
@@ -312,10 +455,26 @@ pub fn preview_geometry(project: &Project) -> PreviewGeometry {
             length_mm: length,
         });
     }
+    let frame = project
+        .layers
+        .iter()
+        .find(|l| l.operation == OperationKind::Frame)
+        .and_then(|l| {
+            frame_bounds(project, l)
+                .ok()
+                .flatten()
+                .map(|bounds| FramePreview {
+                    bounds,
+                    passes: l.passes,
+                    speed_mm_min: l.speed_mm_min,
+                    margin_mm: l.frame_margin_mm,
+                })
+        });
     PreviewGeometry {
         objects,
         bounds: project.transformed_bounds().unwrap_or(project.document.bounds_mm),
         document_bounds: project.document.bounds_mm,
+        frame,
     }
 }
 
@@ -537,11 +696,73 @@ mod tests {
     }
 
     #[test]
-    fn color_assign_red_to_cut() {
+    fn color_split_creates_layer_per_distinct_color() {
         let mut p = project_with_red_line();
-        let preview = apply_color_assignment(&mut p, true);
-        assert_eq!(preview.matches.iter().find(|g| g.layer_name == "Cut").unwrap().count, 1);
-        assert!(p.document.objects[0].layer_id.is_some());
+        let preview = split_layers_by_color(&mut p, true);
+        assert_eq!(preview.matches.len(), 1);
+        assert_eq!(preview.matches[0].count, 1);
+        let layer_id = p.document.objects[0].layer_id.unwrap();
+        let layer = p.layer(layer_id).unwrap();
+        // Red matches the "Cut" convention, so the auto layer is a cut and
+        // shows the source colour.
+        assert_eq!(layer.operation, OperationKind::Cut);
+        assert_eq!(layer.display_color, Rgba8::rgb(255, 0, 0));
+        assert!(matches!(layer.source_assignment, AssignmentRule::Color { .. }));
+    }
+
+    #[test]
+    fn color_split_without_overwrite_keeps_manual_assignment() {
+        let mut p = project_with_red_line();
+        split_layers_by_color(&mut p, true);
+        let obj_id = p.document.objects[0].id;
+        let manual = create_layer_from_selection(&mut p, "Manual".into(), Rgba8::rgb(1, 2, 3), &[obj_id]);
+        assert_eq!(p.document.objects[0].layer_id, Some(manual));
+        split_layers_by_color(&mut p, false);
+        assert_eq!(p.document.objects[0].layer_id, Some(manual));
+        split_layers_by_color(&mut p, true);
+        assert_ne!(p.document.objects[0].layer_id, Some(manual));
+    }
+
+    #[test]
+    fn delete_layer_moves_paths_to_unassigned() {
+        let mut p = project_with_red_line();
+        split_layers_by_color(&mut p, true);
+        let layer_id = p.document.objects[0].layer_id.unwrap();
+        let unassigned_id = p
+            .layers
+            .iter()
+            .find(|l| matches!(l.source_assignment, AssignmentRule::Unassigned))
+            .unwrap()
+            .id;
+        delete_layer(&mut p, layer_id).unwrap();
+        assert!(p.layer(layer_id).is_none());
+        assert_eq!(p.document.objects[0].layer_id, Some(unassigned_id));
+        // Unassigned itself cannot be deleted.
+        assert!(delete_layer(&mut p, unassigned_id).is_err());
+    }
+
+    #[test]
+    fn frame_layer_update_is_locked_except_passes_and_speed() {
+        let mut p = project_with_red_line();
+        split_layers_by_color(&mut p, true);
+        let frame_id = add_frame(&mut p, 2.0);
+        let mut incoming = p.layer(frame_id).unwrap().clone();
+        incoming.name = "Hacked".into();
+        incoming.power_percent = 90.0;
+        incoming.passes = 4;
+        incoming.speed_mm_min = 321.0;
+        update_layer(&mut p, incoming).unwrap();
+        let frame = p.layer(frame_id).unwrap();
+        assert_eq!(frame.name, "Frame");
+        assert_eq!(frame.power_percent, 0.0);
+        assert_eq!(frame.passes, 4);
+        assert_eq!(frame.speed_mm_min, 321.0);
+        // A normal layer cannot be turned into a frame via update_layer.
+        let other = p.document.objects[0].layer_id.unwrap();
+        let mut incoming = p.layer(other).unwrap().clone();
+        incoming.operation = OperationKind::Frame;
+        incoming.laser_must_remain_off = true;
+        assert!(update_layer(&mut p, incoming).is_err());
     }
 
     #[test]
@@ -553,9 +774,19 @@ mod tests {
     }
 
     #[test]
+    fn old_project_json_without_grid_background_loads() {
+        // schema v1 files predate display.gridBackground; it must default.
+        let p = project_with_red_line();
+        let mut json: serde_json::Value = serde_json::to_value(&p).unwrap();
+        json["display"].as_object_mut().unwrap().remove("gridBackground");
+        let back: Project = serde_json::from_value(json).unwrap();
+        assert_eq!(back.display.grid_background, laser_core::GridBackground::Dark);
+    }
+
+    #[test]
     fn frame_gcode_never_enables_laser() {
         let mut p = project_with_red_line();
-        apply_color_assignment(&mut p, true);
+        split_layers_by_color(&mut p, true);
         add_frame(&mut p, 1.0);
         let gcode = export_gcode(&p).unwrap();
         let frame_section = gcode.split("Layer: Frame").nth(1).unwrap_or("");
@@ -563,5 +794,16 @@ mod tests {
         assert!(!until_next.contains("M3"));
         assert!(!until_next.contains("M4"));
         assert!(until_next.contains("M5"));
+    }
+
+    #[test]
+    fn preview_includes_frame_rectangle() {
+        let mut p = project_with_red_line();
+        split_layers_by_color(&mut p, true);
+        assert!(preview_geometry(&p).frame.is_none());
+        add_frame(&mut p, 2.0);
+        let frame = preview_geometry(&p).frame.unwrap();
+        assert!((frame.bounds.max.x - 12.0).abs() < 1e-9);
+        assert!((frame.bounds.min.x - -2.0).abs() < 1e-9);
     }
 }

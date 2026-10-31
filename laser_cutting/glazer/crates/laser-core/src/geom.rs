@@ -1,3 +1,13 @@
+//! # Geometry primitives
+//!
+//! Points, 2D bounds, path geometry (subpaths of line/quad/cubic/arc
+//! segments) and the [`Affine`] transform used for the job-level
+//! scale/rotate/offset. All coordinates are millimetres, Y up.
+//!
+//! Why `Affine` is spelled out as six fields instead of using a matrix crate:
+//! the project file is JSON, and plain named fields keep saved projects
+//! readable and diff-able.
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::{check_finite, CoreError, MAX_EXTENT_MM};

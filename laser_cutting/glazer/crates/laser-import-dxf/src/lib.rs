@@ -1,3 +1,11 @@
+//! # DXF importer
+//!
+//! Parses DXF (ASCII) with the `dxf` crate and maps entities (LINE, LWPOLYLINE,
+//! POLYLINE, CIRCLE, ARC, ELLIPSE, SPLINE, ...) to canonical-millimetre paths.
+//! Colours come from the AutoCAD Color Index via `aci_to_rgb`, and units from
+//! `$INSUNITS` — which is often missing, hence the ambiguous-units handling in
+//! `laser-core::units`.
+
 use std::io::Cursor;
 
 use dxf::entities::EntityType;

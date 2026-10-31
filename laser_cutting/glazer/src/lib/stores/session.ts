@@ -1,3 +1,8 @@
+// Central Svelte stores for the open session: the project, preview geometry,
+// estimate, validation, canvas selection and the layer selected in the layer
+// panel. `run()` wraps every mutating action so the busy flag and error
+// message stay consistent and all stores refresh afterwards via `refreshAll()`.
+
 import { get, writable } from "svelte/store";
 import * as api from "$lib/api";
 import type {
@@ -14,6 +19,8 @@ export const summary = writable<ProjectSummary | null>(null);
 export const estimate = writable<EstimateReport | null>(null);
 export const validation = writable<ValidationReport | null>(null);
 export const selectedIds = writable<string[]>([]);
+/** Layer clicked in the layer panel; drives which layer's properties are shown. */
+export const selectedLayerId = writable<string | null>(null);
 export const errorMessage = writable<string | null>(null);
 export const busy = writable(false);
 

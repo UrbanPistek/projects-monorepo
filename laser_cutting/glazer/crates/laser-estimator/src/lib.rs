@@ -1,3 +1,13 @@
+//! # Runtime estimator
+//!
+//! Estimates job time from a [`MotionPlan`] with a deliberately simple,
+//! disclosed model: cut time = length / feed, travel time = length / rapid
+//! feed. It does **not** model acceleration, cornering or buffering — those
+//! assumptions are returned in `EstimateReport.assumptions` so the UI can show
+//! them next to the number instead of hiding them. Per-layer breakdowns are
+//! computed from the planner's per-layer stats so the breakdown always sums
+//! to the same motion the planner emitted.
+
 use laser_core::{MachineSettings, PointMm};
 use laser_planner::{LayerPlanStats, MotionOp, MotionPlan};
 use serde::{Deserialize, Serialize};
@@ -23,10 +33,15 @@ pub struct EstimateReport {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LayerEstimate {
+    pub layer_id: laser_core::LayerId,
     pub name: String,
     pub cut_length_mm: f64,
     pub travel_length_mm: f64,
     pub cut_minutes: f64,
+    /// `None` when the rapid feed is unknown, mirroring `travel_minutes` on
+    /// the top-level report (travel time is then omitted from totals).
+    pub travel_minutes: Option<f64>,
+    pub total_minutes: Option<f64>,
     pub path_count: u32,
     pub passes: u32,
 }
@@ -127,19 +142,36 @@ pub fn estimate(plan: &MotionPlan, machine: &MachineSettings) -> EstimateReport 
         travel_length_mm: travel_len,
         path_count: plan.layers.iter().map(|l| l.path_count).sum(),
         segment_count: plan.layers.iter().map(|l| l.segment_count).sum(),
-        layers: plan.layers.iter().map(layer_estimate).collect(),
+        layers: plan.layers.iter().map(|l| layer_estimate(l, rapid)).collect(),
         confidence,
         assumptions,
         warnings,
     }
 }
 
-fn layer_estimate(layer: &LayerPlanStats) -> LayerEstimate {
+/// Per-layer time derived from the planner's per-layer stats: cutting time is
+/// passes x length / feed, travel time is length / rapid feed (when known).
+/// Deriving from stats (instead of re-walking the op stream) keeps the
+/// estimate consistent with what the planner actually emitted.
+fn layer_estimate(layer: &LayerPlanStats, rapid: Option<f64>) -> LayerEstimate {
+    let cut_minutes = if layer.speed_mm_min > 0.0 {
+        layer.passes.max(1) as f64 * layer.cut_length_mm / layer.speed_mm_min
+    } else {
+        0.0
+    };
+    let travel_minutes = match rapid {
+        Some(f) if f > 0.0 => Some(layer.travel_length_mm / f),
+        _ => None,
+    };
+    let total_minutes = travel_minutes.map(|t| cut_minutes + t);
     LayerEstimate {
+        layer_id: layer.layer_id,
         name: layer.name.clone(),
         cut_length_mm: layer.cut_length_mm,
         travel_length_mm: layer.travel_length_mm,
-        cut_minutes: 0.0,
+        cut_minutes,
+        travel_minutes,
+        total_minutes,
         path_count: layer.path_count,
         passes: layer.passes,
     }

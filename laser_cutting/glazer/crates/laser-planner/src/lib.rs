@@ -1,6 +1,21 @@
+//! # Motion planner
+//!
+//! Turns a [`Project`] into a firmware-neutral [`MotionPlan`]: a flat list of
+//! [`MotionOp`]s (rapid moves, laser-on moves with feed+power, laser off,
+//! comments) in layer stacking order. The planner owns the two safety-critical
+//! rules of the whole app:
+//!
+//! 1. the laser is always explicitly off (`LaserOff`) before any rapid move
+//!    and at program end — we never rely on the controller remembering state;
+//! 2. frame layers are emitted with `LaserOffMoveTo` only, so the frame can
+//!    never turn the laser on.
+//!
+//! It also produces per-layer stats (used by the estimator) and
+//! [`transformed_preview_polylines`]/[`frame_bounds`] for the canvas preview.
+
 use laser_core::{
-    flatten_geometry, polyline_length, Affine, Bounds2D, CoreError, LayerId, ObjectId,
-    OperationKind, PointMm, ProcessLayer, Project,
+    flatten_geometry, polyline_length, Bounds2D, CoreError, LayerId, ObjectId, OperationKind,
+    PointMm, ProcessLayer, Project,
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +56,9 @@ pub struct LayerPlanStats {
     pub cut_length_mm: f64,
     pub travel_length_mm: f64,
     pub is_frame: bool,
+    /// Feed used for this layer's moves; lets the estimator compute
+    /// per-layer minutes without re-walking the op stream.
+    pub speed_mm_min: f64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -112,7 +130,7 @@ pub fn plan_project(project: &Project, options: PlanOptions) -> Result<MotionPla
             text: format!("Layer: {}", layer.name),
         });
         if layer.operation == OperationKind::Frame {
-            let frame_stats = emit_frame(project, &layer, xf, &mut ops, &mut cursor, &mut all_pts)?;
+            let frame_stats = emit_frame(project, &layer, &mut ops, &mut cursor, &mut all_pts)?;
             stats.push(frame_stats);
             continue;
         }
@@ -195,6 +213,7 @@ pub fn plan_project(project: &Project, options: PlanOptions) -> Result<MotionPla
             cut_length_mm: cut_len,
             travel_length_mm: travel_len,
             is_frame: false,
+            speed_mm_min: layer.speed_mm_min,
         });
     }
 
@@ -210,14 +229,12 @@ pub fn plan_project(project: &Project, options: PlanOptions) -> Result<MotionPla
     })
 }
 
-fn emit_frame(
-    project: &Project,
-    layer: &ProcessLayer,
-    xf: Affine,
-    ops: &mut Vec<MotionOp>,
-    cursor: &mut Option<PointMm>,
-    all_pts: &mut Vec<PointMm>,
-) -> Result<LayerPlanStats, PlanError> {
+/// Rectangle (in transformed job coordinates) that a frame layer would trace:
+/// the bounds of all export-enabled, non-frame geometry expanded by the
+/// frame margin. Shared by the planner (to emit the moves) and the preview
+/// (to draw the dashed orange outline on the canvas).
+pub fn frame_bounds(project: &Project, layer: &ProcessLayer) -> Result<Option<Bounds2D>, PlanError> {
+    let xf = project.job.affine();
     let mut pts = Vec::new();
     for obj in &project.document.objects {
         if !obj.export_enabled {
@@ -238,11 +255,25 @@ fn emit_frame(
         }
     }
     if pts.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(
+        Bounds2D::from_points(pts)?.expand(layer.frame_margin_mm),
+    ))
+}
+
+fn emit_frame(
+    project: &Project,
+    layer: &ProcessLayer,
+    ops: &mut Vec<MotionOp>,
+    cursor: &mut Option<PointMm>,
+    all_pts: &mut Vec<PointMm>,
+) -> Result<LayerPlanStats, PlanError> {
+    let Some(bounds) = frame_bounds(project, layer)? else {
         return Err(PlanError::Invalid(
             "frame requires export-enabled geometry".into(),
         ));
-    }
-    let bounds = Bounds2D::from_points(pts)?.expand(layer.frame_margin_mm);
+    };
     let corners = [
         bounds.min,
         PointMm {
@@ -262,12 +293,17 @@ fn emit_frame(
     if let Some(prev) = *cursor {
         travel += prev.distance(corners[0]);
     }
-    for w in corners.windows(2) {
-        travel += w[0].distance(w[1]);
-        ops.push(MotionOp::LaserOffMoveTo {
-            to: w[1],
-            feed_mm_min: layer.speed_mm_min,
-        });
+    // A frame is a safety/tracing move with the laser off, but the user can
+    // still want it repeated, so honour the layer's pass count.
+    let passes = layer.passes.max(1);
+    for _ in 0..passes {
+        for w in corners.windows(2) {
+            travel += w[0].distance(w[1]);
+            ops.push(MotionOp::LaserOffMoveTo {
+                to: w[1],
+                feed_mm_min: layer.speed_mm_min,
+            });
+        }
     }
     *cursor = Some(corners[0]);
     all_pts.extend_from_slice(&corners);
@@ -275,11 +311,12 @@ fn emit_frame(
         layer_id: layer.id,
         name: layer.name.clone(),
         path_count: 1,
-        segment_count: 4,
-        passes: 1,
+        segment_count: 4 * passes,
+        passes,
         cut_length_mm: 0.0,
         travel_length_mm: travel,
         is_frame: true,
+        speed_mm_min: layer.speed_mm_min,
     })
 }
 
@@ -304,8 +341,9 @@ pub fn transformed_preview_polylines(
 #[cfg(test)]
 mod tests {
     use laser_core::{
-        DocumentId, PathGeometry, PathObject, PathSegment, PointMm, SourceFormat, SourceMetadata,
-        SourceStyle, Subpath, UnitMetadata, VectorDocument,
+        Affine, DocumentId, OperationKind, PathGeometry, PathObject, PathSegment, PointMm,
+        ProcessLayer, Rgba8, SourceFormat, SourceMetadata, SourceStyle, Subpath, UnitMetadata,
+        VectorDocument,
     };
 
     use super::*;
@@ -361,7 +399,11 @@ mod tests {
         };
         document.recompute_bounds().ok();
         let mut project = Project::from_document(document);
-        let cut_id = project.layers[0].id;
+        // Layers are no longer created from a colour palette on import, so
+        // tests create the process layer they need explicitly.
+        let layer = ProcessLayer::new("Cut", Rgba8::rgb(255, 0, 0), 0, OperationKind::Cut);
+        let cut_id = layer.id;
+        project.layers.push(layer);
         project.document.objects[0].layer_id = Some(cut_id);
         project
     }
@@ -380,5 +422,54 @@ mod tests {
                 _ => {}
             }
         }
+    }
+
+    #[test]
+    fn frame_honours_passes_and_never_enables_laser() {
+        let mut project = square_project();
+        let mut frame = ProcessLayer::frame(0, 2.0);
+        frame.passes = 3;
+        frame.speed_mm_min = 500.0;
+        // Frame must be first in the stack.
+        for layer in &mut project.layers {
+            layer.order += 1;
+        }
+        let frame_id = frame.id;
+        project.layers.push(frame);
+
+        let plan = plan_project(&project, PlanOptions::default()).unwrap();
+        let frame_stats = plan.layers.iter().find(|l| l.layer_id == frame_id).unwrap();
+        assert!(frame_stats.is_frame);
+        assert_eq!(frame_stats.passes, 3);
+        assert_eq!(frame_stats.segment_count, 12);
+        // 4 LaserOffMoveTo segments per pass on a 10x10 square + 2mm margin.
+        let perimeter = 2.0 * (14.0 + 14.0);
+        assert!((frame_stats.travel_length_mm - 3.0 * perimeter).abs() < 1e-9);
+
+        let start = plan
+            .ops
+            .iter()
+            .position(|op| matches!(op, MotionOp::Comment { text } if text == "Layer: Frame"))
+            .unwrap();
+        let end = plan.ops[start + 1..]
+            .iter()
+            .position(|op| matches!(op, MotionOp::Comment { text } if text.starts_with("Layer:")))
+            .map(|i| start + 1 + i)
+            .unwrap_or(plan.ops.len());
+        let frame_ops = &plan.ops[start..end];
+        assert!(!frame_ops.iter().any(|op| matches!(
+            op,
+            MotionOp::SetLaser { .. } | MotionOp::LaserMoveTo { .. }
+        )));
+    }
+
+    #[test]
+    fn frame_bounds_matches_document_bounds_plus_margin() {
+        let project = square_project();
+        let frame = ProcessLayer::frame(0, 2.0);
+        let bounds = frame_bounds(&project, &frame).unwrap().unwrap();
+        assert!((bounds.min.x - -2.0).abs() < 1e-9);
+        assert!((bounds.max.x - 12.0).abs() < 1e-9);
+        assert!((bounds.max.y - 12.0).abs() < 1e-9);
     }
 }

@@ -1,3 +1,14 @@
+//! # Vector document
+//!
+//! The imported geometry in canonical millimetres: a flat list of
+//! [`PathObject`]s, each carrying its flattened-curve-free [`PathGeometry`],
+//! the source style (for colour-based assignment), provenance metadata, and
+//! the `layer_id` assigning it to a process layer (`None` = unassigned).
+//!
+//! Also defines the import report types so importers can describe what they
+//! did (counts, skipped entities, unit certainty) without the UI knowing
+//! anything about SVG/DXF internals.
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::CoreError;

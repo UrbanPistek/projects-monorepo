@@ -1,5 +1,11 @@
 <script lang="ts">
+  // The 2D canvas: draws the grid (with axis labels in the display unit), the
+  // drawing bounds, every visible path coloured by its layer, the frame
+  // layer as a dashed orange outline on top, and highlights the layer that
+  // owns the selected paths. Supports wheel zoom, right/middle-drag pan, and
+  // click / shift-click / drag-rectangle selection.
   import { preview, selectedIds, project } from "$lib/stores/session";
+  import { mmToDisplay, unitLabel } from "$lib/format";
   import type { PreviewObject } from "$lib/api";
 
   let canvas: HTMLCanvasElement;
@@ -11,9 +17,19 @@
   let lastY = 0;
   let rectSelect = $state<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
 
+  // Off-white "paper" grid theme vs the default dark theme.
+  let light = $derived($project?.display.gridBackground === "offWhite");
+  let displayUnit = $derived($project?.display.displayUnit ?? "millimeter");
+
   $effect(() => {
-    preview.subscribe(() => draw());
-    selectedIds.subscribe(() => draw());
+    const un1 = preview.subscribe(() => draw());
+    const un2 = selectedIds.subscribe(() => draw());
+    const un3 = project.subscribe(() => draw());
+    return () => {
+      un1();
+      un2();
+      un3();
+    };
   });
 
   function worldToScreen(x: number, y: number) {
@@ -40,10 +56,17 @@
     draw();
   }
 
+  // Grid step in world units, chosen so lines stay ~80px apart while zooming.
   function gridStep(): number {
-    const candidates = [1, 5, 10, 50, 100, 500];
+    const candidates = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
     const target = 80 / scale;
     return candidates.reduce((best, n) => (Math.abs(n - target) < Math.abs(best - target) ? n : best));
+  }
+
+  // Decimals needed to label a step without float noise.
+  function stepDecimals(step: number): number {
+    if (step >= 1) return 0;
+    return Math.min(6, Math.ceil(-Math.log10(step)));
   }
 
   function draw() {
@@ -59,10 +82,19 @@
 
     const geo = $preview;
     const showGrid = $project?.display.gridEnabled ?? true;
+    // Palette adapts to the grid background theme.
+    const gridColor = light ? "#c9c2b0" : "#243044";
+    const labelColor = light ? "#6b6350" : "#9aa3b2";
+    const boundsColor = light ? "#a39a82" : "#6b7280";
+    const selectColor = light ? "#c2372f" : "#ffffff";
+
     if (showGrid) {
       const step = gridStep();
-      ctx.strokeStyle = "#243044";
+      const decimals = stepDecimals(step);
+      ctx.strokeStyle = gridColor;
+      ctx.fillStyle = labelColor;
       ctx.lineWidth = 1;
+      ctx.font = "10px sans-serif";
       const w0 = screenToWorld(0, rect.height);
       const w1 = screenToWorld(rect.width, 0);
       const xStart = Math.floor(w0.x / step) * step;
@@ -72,11 +104,14 @@
         const s = worldToScreen(x, 0);
         ctx.moveTo(s.x, 0);
         ctx.lineTo(s.x, rect.height);
+        // Axis tick label: value in the display unit, updates with zoom.
+        ctx.fillText(mmToDisplay(x, displayUnit).toFixed(decimals), s.x + 2, rect.height - 5);
       }
       for (let y = yStart; y <= w1.y; y += step) {
         const s = worldToScreen(0, y);
         ctx.moveTo(0, s.y);
         ctx.lineTo(rect.width, s.y);
+        ctx.fillText(mmToDisplay(y, displayUnit).toFixed(decimals), 4, s.y - 3);
       }
       ctx.stroke();
     }
@@ -92,23 +127,33 @@
     ctx.moveTo(origin.x, origin.y);
     ctx.lineTo(origin.x, origin.y - 40);
     ctx.stroke();
-    ctx.fillStyle = "#9aa3b2";
-    ctx.fillText("X", origin.x + 44, origin.y - 4);
-    ctx.fillText("Y", origin.x + 4, origin.y - 44);
+    ctx.fillStyle = labelColor;
+    const ul = unitLabel(displayUnit);
+    ctx.fillText(`X (${ul})`, origin.x + 44, origin.y - 4);
+    ctx.fillText(`Y (${ul})`, origin.x + 4, origin.y - 44);
 
     if (geo) {
-      ctx.strokeStyle = "#e0b44a";
+      // Muted dashed rect around the drawing bounds.
+      ctx.strokeStyle = boundsColor;
       ctx.setLineDash([4, 4]);
       const a = worldToScreen(geo.bounds.min.x, geo.bounds.min.y);
       const b = worldToScreen(geo.bounds.max.x, geo.bounds.max.y);
       ctx.strokeRect(a.x, b.y, b.x - a.x, a.y - b.y);
       ctx.setLineDash([]);
 
+      // Highlight the layers that own the selected paths.
       const selected = new Set($selectedIds);
+      const highlightLayers = new Set<string>();
+      for (const obj of geo.objects) {
+        if (obj.layerId && selected.has(obj.id)) highlightLayers.add(obj.layerId);
+      }
+
       for (const obj of geo.objects) {
         if (!obj.visible) continue;
-        ctx.strokeStyle = selected.has(obj.id) ? "#ffffff" : obj.color;
-        ctx.lineWidth = selected.has(obj.id) ? 2.5 : 1.2;
+        const isSelected = selected.has(obj.id);
+        const isSameLayer = !isSelected && obj.layerId !== null && highlightLayers.has(obj.layerId);
+        ctx.strokeStyle = isSelected ? selectColor : obj.color;
+        ctx.lineWidth = isSelected ? 2.5 : isSameLayer ? 2 : 1.2;
         ctx.globalAlpha = obj.exportEnabled ? 1 : 0.45;
         for (const line of obj.polylines) {
           if (line.length < 2) continue;
@@ -123,10 +168,25 @@
         }
         ctx.globalAlpha = 1;
       }
+
+      // Frame layer: dashed orange outline drawn last so it sits on top.
+      if (geo.frame) {
+        const f = geo.frame.bounds;
+        const fa = worldToScreen(f.min.x, f.min.y);
+        const fb = worldToScreen(f.max.x, f.max.y);
+        ctx.strokeStyle = "#FFA000";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(fa.x, fb.y, fb.x - fa.x, fa.y - fb.y);
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#FFA000";
+        ctx.font = "10px sans-serif";
+        ctx.fillText("frame", fb.x - 34, fb.y + 12);
+      }
     }
 
     if (rectSelect) {
-      ctx.strokeStyle = "#5b8def";
+      ctx.strokeStyle = light ? "#c2372f" : "#5b8def";
       ctx.setLineDash([5, 3]);
       const x = Math.min(rectSelect.x0, rectSelect.x1);
       const y = Math.min(rectSelect.y0, rectSelect.y1);
@@ -237,6 +297,7 @@
 
 <canvas
   class="preview"
+  class:light
   bind:this={canvas}
   onwheel={onWheel}
   onmousedown={onDown}

@@ -1,3 +1,11 @@
+//! # Curve flattening
+//!
+//! Lasers move in straight lines, so quadratic/cubic Béziers and arcs are
+//! subdivided into polylines here — once, in the core — rather than in every
+//! consumer. The chord-error tolerance (job setting) is the maximum distance
+//! between the true curve and the emitted segments; smaller values give
+//! smoother output at the cost of more segments.
+
 use crate::geom::{PathGeometry, PathSegment, PointMm, Subpath};
 
 /// Flatten curves to polylines using a chord-error tolerance in millimetres.

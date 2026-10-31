@@ -1,5 +1,18 @@
+//! # Colour handling
+//!
+//! Why this exists: imported artwork carries *source* colours (SVG paint,
+//! DXF ACI indices), and Glazer's "Assign by color" feature groups paths by
+//! those colours to auto-generate layers. Layers themselves are process
+//! containers and may hold paths of several colours — the colour is only a
+//! hint used at import/assignment time, never an operation.
+//!
+//! Contains the RGBA type, the legacy preset palette (kept so red still
+//! defaults to a cut operation), fuzzy colour matching within a tolerance, and
+//! the AutoCAD Color Index table used by DXF.
+
 use serde::{Deserialize, Serialize};
 
+/// 8-bit RGBA colour. Alpha is kept for fidelity but ignored by the matcher.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Rgba8 {

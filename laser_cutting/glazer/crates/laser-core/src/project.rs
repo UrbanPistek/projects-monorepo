@@ -1,11 +1,21 @@
+//! # Project model
+//!
+//! A [`Project`] is the whole saved state: the imported [`VectorDocument`],
+//! the process layers, and the job/machine/export/display settings. It is
+//! serialized directly as JSON (`.lasercam.json`), so every field here is part
+//! of the on-disk format — new fields must use `#[serde(default)]` to keep
+//! older files loadable (see `docs/project-format.md`).
+//!
+//! Invariants enforced by validation: layer speeds positive, power within
+//! 0..=100, at least one pass, and frame layers always keep the laser off.
+
 use serde::{Deserialize, Serialize};
 
-use crate::color::standard_palette;
 use crate::document::VectorDocument;
 use crate::error::CoreError;
 use crate::geom::{Affine, Bounds2D, PointMm};
 use crate::ids::LayerId;
-use crate::layers::{OperationKind, ProcessLayer};
+use crate::layers::ProcessLayer;
 use crate::units::UnitCertainty;
 
 pub const PROJECT_SCHEMA_VERSION: u32 = 1;
@@ -105,6 +115,16 @@ impl Default for ExportSettings {
     }
 }
 
+/// Canvas grid background theme. `OffWhite` gives a light "paper" look for
+/// checking dark artwork; `Dark` is the default night-friendly theme.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GridBackground {
+    #[default]
+    Dark,
+    OffWhite,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DisplaySettings {
@@ -112,6 +132,10 @@ pub struct DisplaySettings {
     pub grid_enabled: bool,
     pub snap_to_grid: bool,
     pub color_tolerance: f64,
+    /// `#[serde(default)]` keeps project files written before this field
+    /// existed loadable (they read as the dark theme).
+    #[serde(default)]
+    pub grid_background: GridBackground,
 }
 
 impl Default for DisplaySettings {
@@ -121,6 +145,7 @@ impl Default for DisplaySettings {
             grid_enabled: true,
             snap_to_grid: false,
             color_tolerance: crate::color::DEFAULT_COLOR_TOLERANCE,
+            grid_background: GridBackground::default(),
         }
     }
 }
@@ -139,36 +164,17 @@ pub struct Project {
 }
 
 impl Project {
+    /// Build a project from a freshly imported document.
+    ///
+    /// Layers are deliberately *not* created from the colour palette here:
+    /// a layer is a process container, not a colour. The caller
+    /// (`laser-app`) immediately runs the colour split so the imported paths
+    /// land in one auto-generated layer per distinct source colour; this
+    /// constructor only guarantees the always-present grey "Unassigned"
+    /// layer that catches colour-less paths and paths of deleted layers.
     pub fn from_document(document: VectorDocument) -> Self {
         let bounds = document.bounds_mm;
-        let mut layers: Vec<ProcessLayer> = standard_palette()
-            .into_iter()
-            .enumerate()
-            .map(|(i, preset)| {
-                let op = if preset.name == "Cut" {
-                    OperationKind::Cut
-                } else {
-                    OperationKind::EngraveLine
-                };
-                let mut layer = ProcessLayer::new(preset.name, preset.color, i as u32, op);
-                layer.source_assignment = crate::layers::AssignmentRule::Color {
-                    hex: preset.color.to_hex(),
-                    tolerance: crate::color::DEFAULT_COLOR_TOLERANCE,
-                };
-                layer
-            })
-            .collect();
-        layers.push({
-            let mut unassigned = ProcessLayer::new(
-                "Unassigned",
-                crate::color::Rgba8::rgb(160, 160, 160),
-                layers.len() as u32,
-                OperationKind::EngraveLine,
-            );
-            unassigned.export_enabled = false;
-            unassigned.source_assignment = crate::layers::AssignmentRule::Unassigned;
-            unassigned
-        });
+        let layers: Vec<ProcessLayer> = vec![ProcessLayer::unassigned(0)];
         let job = JobSettings::default().with_origin(bounds, OriginMode::LowerLeft);
         Self {
             schema_version: PROJECT_SCHEMA_VERSION,

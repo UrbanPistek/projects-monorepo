@@ -1,3 +1,9 @@
+//! # Stable identifiers
+//!
+//! Every document, path and layer gets a UUID at creation. IDs (not names or
+//! indices) are what assignments and reordering reference, so renaming a layer
+//! or re-sorting the panel can never silently retarget a path.
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

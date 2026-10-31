@@ -4,9 +4,20 @@ Linux-first desktop laser CAM: import SVG/DXF, assign paths to process layers, p
 
 Designed to simple, effective and portable.
 
-## Development (Linux)
+## Development
 
-System packages (Debian/Ubuntu), from the Tauri 2 prerequisites:
+Clone, then install the system dependencies for your platform (below), then:
+
+```bash
+npm install
+cargo test --workspace   # Rust engine tests
+npm run check            # Svelte/TypeScript checks
+npm run tauri dev        # run the desktop app in dev mode
+```
+
+### Linux — Debian / Ubuntu
+
+System packages (from the Tauri 2 prerequisites):
 
 ```bash
 sudo apt update
@@ -19,13 +30,88 @@ sudo apt install \
   librsvg2-dev pkg-config
 ```
 
-Then:
+### Linux — Fedora / RHEL / CentOS Stream
+
+```bash
+sudo dnf install \
+  webkit2gtk4.1-devel \
+  libsoup3-devel \
+  libayatana-appindicator-gtk3-devel \
+  librsvg2-devel \
+  libxdo-devel \
+  openssl-devel \
+  gcc-c++ \
+  curl wget file \
+  pkg-config
+```
+
+### Linux — Arch / Manjaro
+
+```bash
+sudo pacman -S \
+  webkit2gtk-4.1 \
+  libsoup3 \
+  ayatana-appindicator \
+  librsvg \
+  libxdo \
+  openssl \
+  base-devel \
+  curl wget file \
+  pkgconf
+```
+
+### Linux — openSUSE
+
+```bash
+sudo zypper install \
+  libwebkit2gtk-4_1-devel \
+  libsoup-3_0-devel \
+  libayatana-appindicator3-devel \
+  librsvg-devel \
+  libxdo-devel \
+  libopenssl-devel \
+  gcc-c++ \
+  curl wget file \
+  pkg-config
+```
+
+On every Linux distro you also need Rust (via <https://rustup.rs>) and Node.js 20+.
+
+### macOS
+
+```bash
+xcode-select --install   # Command Line Tools (required by Tauri)
+brew install node        # or install Node.js from nodejs.org
+```
+
+No WebKitGTK packages are needed on macOS — Tauri uses the system WKWebView.
+
+### Windows
+
+1. Install Rust from <https://rustup.rs> (the `x86_64-pc-windows-msvc` toolchain, which needs the **Microsoft C++ Build Tools** — install "Desktop development with C++" in Visual Studio or the standalone Build Tools).
+2. Install Node.js 20+ from <https://nodejs.org>.
+3. WebView2 is preinstalled on Windows 11 and installed automatically on Windows 10 by the Tauri installer/bundler when needed.
+4. For `.msi` bundles, install WiX Toolset v4+ (`winget install WiXToolset.WiXToolset` or from wixtoolset.org) and add it to `PATH`.
+
+## Building an application package
+
+With the dependencies above installed:
 
 ```bash
 npm install
-cargo test --workspace
-npm run tauri dev
+npm run tauri build
 ```
+
+This runs `vite build` for the frontend and compiles the Rust backend, then bundles installers into `src-tauri/target/release/bundle/`:
+
+| Platform | Output | Notes |
+| --- | --- | --- |
+| Linux (Debian/Ubuntu) | `.deb`, `.AppImage` | `.deb` needs `dpkg`; `.AppImage` needs `appimagetool` (auto-downloaded by default). Select with `npm run tauri build -- --bundles deb,appimage` |
+| Linux (other distros) | `.AppImage` works everywhere; `.rpm` if `rpmbuild` is installed | AppImage is the most portable Linux format |
+| macOS | `.dmg`, `.app` | On Apple Silicon also produces an `aarch64` bundle; `universal` builds need both toolchains |
+| Windows | `.msi`, `.exe` (NSIS) | `.msi` needs WiX in `PATH`; `.exe` needs NSIS (`winget install NSIS.NSIS`) |
+
+`tauri.conf.json` currently sets `"bundle": { "targets": "all" }`, so every bundle type available for your platform is built; override per-invocation with `--bundles` as shown above.
 
 ## Layout
 

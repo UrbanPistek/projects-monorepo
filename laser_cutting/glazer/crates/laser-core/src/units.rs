@@ -1,7 +1,16 @@
+//! # Units
+//!
+//! All engine geometry is millimetres; this module only exists at the import
+//! boundary to convert source units. The tricky part is *certainty*: DXF files
+//! are frequently unitless, and silently guessing wrong would scale a job by
+//! 25.4x. `UnitCertainty::Ambiguous` therefore **blocks export** until the
+//! user confirms units (see `Project::units_block_export`).
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::{check_finite, CoreError};
 
+/// Supported source/display length units.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LengthUnit {

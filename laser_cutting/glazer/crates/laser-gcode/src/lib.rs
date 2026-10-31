@@ -1,7 +1,16 @@
+//! # Firmware-neutral G-code emission
+//!
+//! Converts a [`MotionPlan`] into G-code text using a [`FirmwareProfile`]'s
+//! declared capabilities (units, decimals, supported M-codes, feed limits).
+//! Keeping the profile data-driven means adding another controller is a data
+//! change, not a rewrite. [`validate_program`] re-checks the emitted text so a
+//! profile bug fails loudly in tests instead of on a machine.
+
 use laser_core::{MachineSettings, PointMm};
 use laser_planner::MotionPlan;
 use serde::{Deserialize, Serialize};
 
+/// M3 = constant power, M4 = power ramps with speed (laser mode).
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PowerMode {

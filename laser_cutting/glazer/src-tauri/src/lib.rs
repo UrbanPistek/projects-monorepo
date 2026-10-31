@@ -1,3 +1,10 @@
+//! # Glazer desktop shell (Tauri)
+//!
+//! Thin wrapper around `laser-app`: owns the global [`AppState`] (the open
+//! project behind a mutex) and exposes the `commands` as Tauri IPC handlers
+//! that the Svelte frontend calls via `src/lib/api.ts`. All real logic lives in
+//! `laser-app`; if it can be tested without Tauri, it is.
+
 mod app_state;
 mod commands;
 
@@ -17,6 +24,9 @@ pub fn run() {
             commands::get_project,
             commands::assign_objects_to_layer,
             commands::auto_assign_by_color,
+            commands::delete_layer,
+            commands::update_display,
+            commands::set_grid_background,
             commands::update_layer,
             commands::reorder_layers,
             commands::create_layer_from_selection,

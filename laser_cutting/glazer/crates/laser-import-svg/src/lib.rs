@@ -1,3 +1,10 @@
+//! # SVG importer
+//!
+//! Parses SVG with `usvg` (which resolves styles, transforms and paint servers
+//! for us) and converts the resulting tree into canonical-millimetre
+//! [`PathObject`]s. SVG's Y-down coordinate system is flipped once here via
+//! [`Affine::svg_y_up`] so the rest of the app can assume Y-up.
+
 use laser_core::{
     Affine, Bounds2D, DocumentId, EntityCount, ImportReport, ImportResult, ImportWarning,
     LengthUnit, ObjectId, PathGeometry, PathObject, PathSegment, PointMm, SourceFormat,

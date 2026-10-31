@@ -1,9 +1,16 @@
+//! Tauri IPC commands. Each command is a thin adapter: parse args, call into
+//! `laser_app` with the shared project state, return serializable results.
+//! Errors serialize as `{ code, message }` via `AppError`'s `Serialize` impl.
+
 use std::path::PathBuf;
 
 use laser_app::{
     self, ColorAssignmentPreview, EstimateReport, PreviewGeometry, ProjectSummary, ValidationReport,
 };
-use laser_core::{LayerId, LengthUnit, ObjectId, OriginMode, ProcessLayer, Project, Rgba8};
+use laser_core::{
+    DisplaySettings, GridBackground, LayerId, LengthUnit, ObjectId, OriginMode, ProcessLayer,
+    Project, Rgba8,
+};
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 
@@ -73,10 +80,39 @@ pub fn auto_assign_by_color(
     state: State<AppState>,
 ) -> Result<ColorAssignmentPreview, laser_app::AppError> {
     if apply {
-        state.with_project_mut(|p| Ok(laser_app::apply_color_assignment(p, true)))
+        // The toolbar button overwrites manual assignments on purpose: it is
+        // a bulk "regroup everything by source colour" action.
+        state.with_project_mut(|p| Ok(laser_app::split_layers_by_color(p, true)))
     } else {
-        state.with_project(laser_app::preview_color_assignment)
+        state.with_project(laser_app::preview_color_split)
     }
+}
+
+#[tauri::command]
+pub fn delete_layer(layer_id: LayerId, state: State<AppState>) -> Result<(), laser_app::AppError> {
+    state.with_project_mut(|p| laser_app::delete_layer(p, layer_id))
+}
+
+#[tauri::command]
+pub fn update_display(
+    display: DisplaySettings,
+    state: State<AppState>,
+) -> Result<(), laser_app::AppError> {
+    state.with_project_mut(|p| {
+        p.display = display;
+        Ok(())
+    })
+}
+
+#[tauri::command]
+pub fn set_grid_background(
+    background: GridBackground,
+    state: State<AppState>,
+) -> Result<(), laser_app::AppError> {
+    state.with_project_mut(|p| {
+        p.display.grid_background = background;
+        Ok(())
+    })
 }
 
 #[tauri::command]

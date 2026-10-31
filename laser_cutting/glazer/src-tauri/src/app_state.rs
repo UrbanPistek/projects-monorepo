@@ -1,7 +1,13 @@
+//! Global application state: the currently open project behind a mutex.
+//! The `with_project`/`with_project_mut` helpers centralize locking and the
+//! "no project is open" error so commands stay one-liners.
+
 use std::sync::Mutex;
 
 use laser_core::Project;
 
+/// Holds the open project. `Mutex` because Tauri commands can run on
+/// different threads; all access goes through the helpers below.
 #[derive(Default)]
 pub struct AppState {
     pub project: Mutex<Option<Project>>,
