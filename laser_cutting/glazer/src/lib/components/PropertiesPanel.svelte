@@ -60,7 +60,7 @@
   {#if selectedLayer}
     <div class="field muted">
       Layer: <strong>{selectedLayer.name}</strong>
-      {#if isFrame}(frame — editable: passes, speed, margin; scale follows Job ▸ Scale){/if}
+      {#if isFrame}(Editable: passes, speed, margin){/if}
     </div>
     <label class="field" class:locked={isFrame}>
       <span class="field-title">Name
@@ -121,7 +121,7 @@
   {/if}
 
   {#if $project}
-    <h2>Job</h2>
+    <h2>Transforms</h2>
     <label class="field">
       <span class="field-title">Scale
         <Tip text="Scales the whole job (including the frame outline) around the origin. 1 = original size." />
@@ -150,6 +150,8 @@
         <button onclick={() => run(() => api.setOrigin("source"))}>Source</button>
       </span>
     </div>
+
+    <h2>Configurations</h2>
     <label class="field">
       <span class="field-title">Rapid feed (mm/min)
         <Tip text="Feed used for travel moves with the laser off (G0). Used to estimate travel time; leave 0 if unknown (travel is then excluded from the total)." />

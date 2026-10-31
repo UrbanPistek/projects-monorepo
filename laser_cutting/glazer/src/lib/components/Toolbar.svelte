@@ -38,7 +38,7 @@
   <button disabled={!$project || $busy} title="Toggle grid background (dark / off-white)" onclick={toggleGridBackground}>
     Grid: {$project?.display.gridBackground === "offWhite" ? "off-white" : "dark"}
   </button>
-  <span class="muted">Assume units:</span>
+  <span class="muted">Import units:</span>
   <select bind:value={assumed} onchange={() => run(() => api.assumeUnits(assumed))}>
     <option value="millimeter">mm</option>
     <option value="inch">in</option>

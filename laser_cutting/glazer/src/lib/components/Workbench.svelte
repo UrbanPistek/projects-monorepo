@@ -22,8 +22,8 @@
   }
 
   // --- Resizable side panels -------------------------------------------------
-  const MIN_PANEL = 180;
-  const MAX_PANEL = 480;
+  const MIN_PANEL = 160;
+  const MAX_PANEL = 520;
   const PANEL_SEPERATION_WDITH_PX = 3;
 
   function loadWidth(key: string, fallback: number): number {
@@ -35,8 +35,8 @@
     }
   }
 
-  let layersW = $state(loadWidth("glazer.layersW", 280));
-  let propsW = $state(loadWidth("glazer.propsW", 280));
+  let layersW = $state(loadWidth("glazer.layersW", 200));
+  let propsW = $state(loadWidth("glazer.propsW", 160));
 
   function clampW(w: number): number {
     return Math.min(MAX_PANEL, Math.max(MIN_PANEL, w));
@@ -111,7 +111,7 @@
         <div class="overlay">
           <div class="overlay-head">
             <button class="overlay-toggle" onclick={() => (estimateExpanded = !estimateExpanded)}>
-              est. total {fmtMin($estimate.totalMinutes)} ({$estimate.confidence})
+              Est. Total Time: {fmtMin($estimate.totalMinutes)}
               {estimateExpanded ? "▾" : "▸"}
             </button>
             <Tip text={$estimate.assumptions.join("\n") || "No assumptions recorded."} />

@@ -110,7 +110,12 @@
       </div>
     {/each}
     <div class="field muted">
-      Click a layer name to edit its properties. → assigns the selected paths to that layer.
+      Click a layer name to edit its properties.
+    </div>
+    <div class="field muted">
+      → assigns the selected paths to that layer.
+    </div>
+    <div class="field muted">
       V = visible, E = export enabled (visibility does not change export). D deletes the layer and moves its paths to grey Unassigned.
     </div>
   {:else}

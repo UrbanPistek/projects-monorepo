@@ -10,7 +10,6 @@
 <footer class="status">
   {#if $summary}
     <span>{$summary.fileName}</span>
-    <span>{$summary.objectCount} Objects</span>
     <span>{$summary.layerCount} Layers</span>
     <span>
       {($summary.bounds.max.x - $summary.bounds.min.x).toFixed(2)} ×
