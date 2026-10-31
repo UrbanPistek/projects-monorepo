@@ -181,10 +181,11 @@ canvas.preview.light {
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
-/* Panel resize divider between grid columns (a <button> for a11y). */
+/* Panel resize divider between grid columns (a <button> for a11y). Blends
+   with the side panels so no dark strip is visible; lights up on hover. */
 .resizer {
   cursor: col-resize;
-  background: transparent;
+  background: var(--panel);
   border: none;
   border-radius: 0;
   padding: 0;
@@ -196,4 +197,5 @@ canvas.preview.light {
 .resizer:focus-visible {
   background: var(--accent);
   border: none;
+  outline: none;
 }

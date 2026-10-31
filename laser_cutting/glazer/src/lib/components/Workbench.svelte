@@ -24,6 +24,7 @@
   // --- Resizable side panels -------------------------------------------------
   const MIN_PANEL = 180;
   const MAX_PANEL = 480;
+  const PANEL_SEPERATION_WDITH_PX = 3;
 
   function loadWidth(key: string, fallback: number): number {
     try {
@@ -45,11 +46,12 @@
     e.preventDefault();
     const startX = e.clientX;
     const startW = which === "layers" ? layersW : propsW;
-    // Dragging the canvas|layers divider right grows the layers panel;
-    // dragging the layers|properties divider left grows the properties panel.
-    const sign = which === "layers" ? 1 : -1;
+    // The canvas column is the flexible (1fr) one, so a divider's screen
+    // position moves opposite to its panel width: to make the divider follow
+    // the cursor, dragging right must shrink the fixed-width panel on its
+    // right (canvas grows). I.e. width -= drag distance for both dividers.
     function onMove(ev: PointerEvent) {
-      const w = clampW(startW + sign * (ev.clientX - startX));
+      const w = clampW(startW - (ev.clientX - startX));
       if (which === "layers") layersW = w;
       else propsW = w;
     }
@@ -69,12 +71,12 @@
     window.addEventListener("pointerup", onUp);
   }
 
-  // Keyboard alternative to dragging: arrow keys resize the panel by 16px.
+  // Keyboard alternative to dragging: ArrowRight moves the divider right
+  // (same as dragging right), ArrowLeft moves it left — 16px steps.
   function onResizerKey(which: "layers" | "props", e: KeyboardEvent) {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     e.preventDefault();
-    const sign = which === "layers" ? 1 : -1;
-    const delta = (e.key === "ArrowRight" ? 1 : -1) * sign * 16;
+    const delta = e.key === "ArrowRight" ? -16 : 16;
     if (which === "layers") layersW = clampW(layersW + delta);
     else propsW = clampW(propsW + delta);
     try {
@@ -101,7 +103,7 @@
   <Toolbar onFit={fit} />
   <div
     class="main"
-    style="grid-template-columns: minmax(0,1fr) 6px {layersW}px 6px {propsW}px"
+    style="grid-template-columns: minmax(0,1fr) {PANEL_SEPERATION_WDITH_PX}px {layersW}px {PANEL_SEPERATION_WDITH_PX}px {propsW}px"
   >
     <div class="canvas-wrap">
       <CanvasView bind:this={canvas} />

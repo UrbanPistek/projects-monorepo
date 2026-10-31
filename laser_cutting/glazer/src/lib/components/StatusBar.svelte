@@ -1,8 +1,9 @@
 <script lang="ts">
   // Bottom status bar: file summary, object/layer counts, bounds, unit
-  // certainty, selection count, the headline estimate, and the first
-  // validation error or import warning.
-  import { summary, estimate, validation, selectedIds, preview } from "$lib/stores/session";
+  // certainty, selection count, the headline estimate, the first validation
+  // error or import warning — and action errors ($errorMessage), which are
+  // shown here only, never in the toolbar.
+  import { summary, estimate, validation, selectedIds, preview, errorMessage } from "$lib/stores/session";
   import { fmtMin } from "$lib/format";
 </script>
 
@@ -29,6 +30,9 @@
     {/if}
   {:else}
     <span>Open an SVG or DXF to begin. Preview, layers, estimate, and G-code stay in millimetres.</span>
+  {/if}
+  {#if $errorMessage}
+    <span class="error">{$errorMessage}</span>
   {/if}
   {#if $preview}
     <span class="muted">wheel zoom · drag select · right-drag pan</span>

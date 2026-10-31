@@ -468,10 +468,12 @@ pub fn preview_geometry(project: &Project) -> PreviewGeometry {
             length_mm: length,
         });
     }
+    // The frame outline is only previewed while the frame layer is visible
+    // (visibility never affects export — that is the export toggle's job).
     let frame = project
         .layers
         .iter()
-        .find(|l| l.operation == OperationKind::Frame)
+        .find(|l| l.operation == OperationKind::Frame && l.visible)
         .and_then(|l| {
             frame_bounds(project, l)
                 .ok()
@@ -860,9 +862,14 @@ mod tests {
         let mut p = project_with_red_line();
         split_layers_by_color(&mut p, true);
         assert!(preview_geometry(&p).frame.is_none());
-        add_frame(&mut p, 2.0);
+        let frame_id = add_frame(&mut p, 2.0);
         let frame = preview_geometry(&p).frame.unwrap();
         assert!((frame.bounds.max.x - 12.0).abs() < 1e-9);
         assert!((frame.bounds.min.x - -2.0).abs() < 1e-9);
+        // Hiding the frame layer hides the outline (but not its export).
+        let mut incoming = p.layer(frame_id).unwrap().clone();
+        incoming.visible = false;
+        update_layer(&mut p, incoming).unwrap();
+        assert!(preview_geometry(&p).frame.is_none());
     }
 }

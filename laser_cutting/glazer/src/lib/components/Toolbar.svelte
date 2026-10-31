@@ -3,7 +3,8 @@
   // paths into one layer per source colour), Add frame, the grid background
   // toggle (dark / off-white) and the unit assumption selector.
   import * as api from "$lib/api";
-  import { run, errorMessage, busy, project } from "$lib/stores/session";
+  // Errors are shown only in the status bar (see StatusBar.svelte).
+  import { run, busy, project } from "$lib/stores/session";
   import type { LengthUnit } from "$lib/api";
 
   let { onFit }: { onFit: () => void } = $props();
@@ -43,7 +44,4 @@
     <option value="inch">in</option>
     <option value="cssPx">px</option>
   </select>
-  {#if $errorMessage}
-    <span class="error">{$errorMessage}</span>
-  {/if}
 </header>
