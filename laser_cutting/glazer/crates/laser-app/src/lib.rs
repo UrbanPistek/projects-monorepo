@@ -264,12 +264,17 @@ pub fn update_layer(project: &mut Project, layer: ProcessLayer) -> Result<(), Ap
     layer.validate()?;
     if let Some(existing) = project.layer_mut(layer.id) {
         if existing.operation == OperationKind::Frame {
-            // Frame layers are fixed except for passes and speed (the frame
-            // outline itself scales with the job-level scale). Merge only the
-            // allowed fields so the UI round-trip cannot unlock the rest.
+            // Frame layers are fixed except for the safe-to-change fields:
+            // passes, speed, frame margin, and the visibility/export toggles
+            // (the frame outline itself scales with the job-level scale).
+            // Merge only the allowed fields so the UI round-trip cannot
+            // unlock the rest (name, operation, power, laser mode, colour).
             let mut merged = existing.clone();
             merged.passes = layer.passes;
             merged.speed_mm_min = layer.speed_mm_min;
+            merged.frame_margin_mm = layer.frame_margin_mm;
+            merged.visible = layer.visible;
+            merged.export_enabled = layer.export_enabled;
             merged.validate()?;
             *existing = merged;
         } else {
@@ -326,21 +331,29 @@ pub fn reorder_layers(project: &mut Project, ordered_ids: &[LayerId]) -> Result<
     Ok(())
 }
 
+/// Create a new empty layer at the end of the stack (frame stays first at
+/// order 0). Defaults to a cut operation; the caller can rename/recolor and
+/// change the operation afterwards via `update_layer`.
+pub fn create_layer(project: &mut Project, name: String, color: Rgba8) -> LayerId {
+    let order = project.layers.iter().map(|l| l.order).max().unwrap_or(0) + 1;
+    let layer = ProcessLayer::new(name, color, order, OperationKind::Cut);
+    let id = layer.id;
+    project.layers.push(layer);
+    id
+}
+
 pub fn create_layer_from_selection(
     project: &mut Project,
     name: String,
     color: Rgba8,
     ids: &[ObjectId],
 ) -> LayerId {
-    let order = project.layers.iter().map(|l| l.order).max().unwrap_or(0) + 1;
-    let layer = ProcessLayer::new(name, color, order, OperationKind::Cut);
-    let id = layer.id;
+    let id = create_layer(project, name, color);
     for obj_id in ids {
         if let Some(obj) = project.document.object_mut(*obj_id) {
             obj.layer_id = Some(id);
         }
     }
-    project.layers.push(layer);
     id
 }
 
@@ -742,27 +755,73 @@ mod tests {
     }
 
     #[test]
-    fn frame_layer_update_is_locked_except_passes_and_speed() {
+    fn frame_layer_update_locks_fixed_fields() {
         let mut p = project_with_red_line();
         split_layers_by_color(&mut p, true);
         let frame_id = add_frame(&mut p, 2.0);
         let mut incoming = p.layer(frame_id).unwrap().clone();
         incoming.name = "Hacked".into();
         incoming.power_percent = 90.0;
+        incoming.laser_mode = laser_core::LaserMode::Constant;
         incoming.passes = 4;
         incoming.speed_mm_min = 321.0;
+        incoming.frame_margin_mm = 7.5;
+        incoming.visible = false;
+        incoming.export_enabled = false;
         update_layer(&mut p, incoming).unwrap();
         let frame = p.layer(frame_id).unwrap();
+        // Fixed fields stay locked...
         assert_eq!(frame.name, "Frame");
         assert_eq!(frame.power_percent, 0.0);
+        assert_eq!(frame.laser_mode, laser_core::LaserMode::Dynamic);
+        // ...while passes, speed, margin and the toggles are editable.
         assert_eq!(frame.passes, 4);
         assert_eq!(frame.speed_mm_min, 321.0);
+        assert_eq!(frame.frame_margin_mm, 7.5);
+        assert!(!frame.visible);
+        assert!(!frame.export_enabled);
         // A normal layer cannot be turned into a frame via update_layer.
         let other = p.document.objects[0].layer_id.unwrap();
         let mut incoming = p.layer(other).unwrap().clone();
         incoming.operation = OperationKind::Frame;
         incoming.laser_must_remain_off = true;
         assert!(update_layer(&mut p, incoming).is_err());
+    }
+
+    #[test]
+    fn frame_visibility_toggle_persists() {
+        let mut p = project_with_red_line();
+        split_layers_by_color(&mut p, true);
+        let frame_id = add_frame(&mut p, 2.0);
+        assert!(p.layer(frame_id).unwrap().visible);
+        let mut incoming = p.layer(frame_id).unwrap().clone();
+        incoming.visible = false;
+        update_layer(&mut p, incoming).unwrap();
+        assert!(!p.layer(frame_id).unwrap().visible);
+        // And the frame rectangle disappears from the preview when hidden?
+        // (Preview still reports it; canvas respects layer.visible via object
+        // visibility, frame outline visibility is a UI concern — just assert
+        // the flag round-trips through a save/load cycle.)
+        let json = serde_json::to_string(&p).unwrap();
+        let back: Project = serde_json::from_str(&json).unwrap();
+        assert!(!back.layer(frame_id).unwrap().visible);
+    }
+
+    #[test]
+    fn create_layer_appends_empty_layer() {
+        let mut p = project_with_red_line();
+        split_layers_by_color(&mut p, true);
+        let id = create_layer(&mut p, "Layer 2".into(), Rgba8::rgb(0, 255, 0));
+        let layer = p.layer(id).unwrap();
+        assert_eq!(layer.name, "Layer 2");
+        assert_eq!(layer.operation, OperationKind::Cut);
+        // New layer goes last: the frame (order 0) stays first.
+        let frame_id = add_frame(&mut p, 2.0);
+        let id2 = create_layer(&mut p, "Layer 3".into(), Rgba8::rgb(0, 0, 255));
+        let sorted = p.sorted_layers();
+        assert_eq!(sorted[0].id, frame_id);
+        assert_eq!(sorted.last().unwrap().id, id2);
+        assert!(p.document.objects.iter().all(|o| o.layer_id != Some(id)));
     }
 
     #[test]

@@ -120,6 +120,13 @@ impl ProcessLayer {
     pub fn validate(&self) -> Result<(), CoreError> {
         check_finite(self.speed_mm_min)?;
         check_finite(self.power_percent)?;
+        check_finite(self.frame_margin_mm)?;
+        if self.frame_margin_mm < 0.0 {
+            return Err(CoreError::Invalid(format!(
+                "layer '{}' frame margin must not be negative",
+                self.name
+            )));
+        }
         if self.speed_mm_min <= 0.0 {
             return Err(CoreError::Invalid(format!(
                 "layer '{}' speed must be positive",

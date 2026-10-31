@@ -2,7 +2,9 @@
   // App layout: toolbar on top, canvas + layer panel + properties in the
   // middle, status bar at the bottom. The canvas overlay shows the estimated
   // total time with an expandable per-export-layer breakdown; estimator
-  // assumptions live in the tooltip next to it.
+  // assumptions live in the tooltip next to it. The layer and properties
+  // panel widths are adjustable by dragging the dividers (persisted in
+  // localStorage).
   import CanvasView from "./CanvasView.svelte";
   import LayerPanel from "./LayerPanel.svelte";
   import PropertiesPanel from "./PropertiesPanel.svelte";
@@ -19,6 +21,72 @@
     canvas?.fit();
   }
 
+  // --- Resizable side panels -------------------------------------------------
+  const MIN_PANEL = 180;
+  const MAX_PANEL = 480;
+
+  function loadWidth(key: string, fallback: number): number {
+    try {
+      const v = Number(localStorage.getItem(key));
+      return Number.isFinite(v) && v > 0 ? v : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  let layersW = $state(loadWidth("glazer.layersW", 280));
+  let propsW = $state(loadWidth("glazer.propsW", 280));
+
+  function clampW(w: number): number {
+    return Math.min(MAX_PANEL, Math.max(MIN_PANEL, w));
+  }
+
+  function startResize(which: "layers" | "props", e: PointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = which === "layers" ? layersW : propsW;
+    // Dragging the canvas|layers divider right grows the layers panel;
+    // dragging the layers|properties divider left grows the properties panel.
+    const sign = which === "layers" ? 1 : -1;
+    function onMove(ev: PointerEvent) {
+      const w = clampW(startW + sign * (ev.clientX - startX));
+      if (which === "layers") layersW = w;
+      else propsW = w;
+    }
+    function onUp() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      try {
+        localStorage.setItem(
+          which === "layers" ? "glazer.layersW" : "glazer.propsW",
+          String(which === "layers" ? layersW : propsW),
+        );
+      } catch {
+        /* storage unavailable (private mode) — widths just won't persist */
+      }
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  // Keyboard alternative to dragging: arrow keys resize the panel by 16px.
+  function onResizerKey(which: "layers" | "props", e: KeyboardEvent) {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const sign = which === "layers" ? 1 : -1;
+    const delta = (e.key === "ArrowRight" ? 1 : -1) * sign * 16;
+    if (which === "layers") layersW = clampW(layersW + delta);
+    else propsW = clampW(propsW + delta);
+    try {
+      localStorage.setItem(
+        which === "layers" ? "glazer.layersW" : "glazer.propsW",
+        String(which === "layers" ? layersW : propsW),
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
   // Per-layer breakdown, limited to layers that are enabled for export.
   let breakdown = $derived.by(() => {
     if (!$estimate || !$project) return [];
@@ -31,13 +99,16 @@
 
 <div class="workbench">
   <Toolbar onFit={fit} />
-  <div class="main">
-    <div style="min-width:0;min-height:0;position:relative;">
+  <div
+    class="main"
+    style="grid-template-columns: minmax(0,1fr) 6px {layersW}px 6px {propsW}px"
+  >
+    <div class="canvas-wrap">
       <CanvasView bind:this={canvas} />
       {#if $estimate}
         <div class="overlay">
           <button class="overlay-toggle" onclick={() => (estimateExpanded = !estimateExpanded)}>
-            Est. Total Time: {fmtMin($estimate.totalMinutes)}
+            est. total {fmtMin($estimate.totalMinutes)} ({$estimate.confidence})
             {estimateExpanded ? "▾" : "▸"}
           </button>
           <Tip text={$estimate.assumptions.join("\n") || "No assumptions recorded."} />
@@ -57,13 +128,43 @@
         <div class="overlay warn">{$validation.warnings[0]}</div>
       {/if}
     </div>
+    <button
+      type="button"
+      class="resizer"
+      aria-label="Resize layers panel"
+      title="Drag or use arrow keys to resize the layers panel"
+      onpointerdown={(e) => startResize("layers", e)}
+      onkeydown={(e) => onResizerKey("layers", e)}
+    ></button>
     <LayerPanel />
+    <button
+      type="button"
+      class="resizer"
+      aria-label="Resize properties panel"
+      title="Drag or use arrow keys to resize the properties panel"
+      onpointerdown={(e) => startResize("props", e)}
+      onkeydown={(e) => onResizerKey("props", e)}
+    ></button>
     <PropertiesPanel />
   </div>
   <StatusBar />
 </div>
 
 <style>
+  .canvas-wrap {
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+  }
+  .resizer {
+    cursor: col-resize;
+    background: transparent;
+    touch-action: none;
+    user-select: none;
+  }
+  .resizer:hover {
+    background: var(--accent);
+  }
   .overlay {
     position: absolute;
     left: 8px;

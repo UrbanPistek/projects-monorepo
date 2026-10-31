@@ -29,6 +29,7 @@ pub fn run() {
             commands::set_grid_background,
             commands::update_layer,
             commands::reorder_layers,
+            commands::create_layer,
             commands::create_layer_from_selection,
             commands::create_frame_operation,
             commands::set_job_origin,

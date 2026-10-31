@@ -25,6 +25,7 @@
 </script>
 
 <header class="toolbar">
+  <img src="/glazer-icon.png" class="logo" alt="Glazer" />
   <strong>Glazer</strong>
   <button class="primary" disabled={$busy} onclick={afterImport}>Open SVG/DXF</button>
   <button disabled={$busy} onclick={() => run(() => api.pickAndOpenProject())}>Open project</button>

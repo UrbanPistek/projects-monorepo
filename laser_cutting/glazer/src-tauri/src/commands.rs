@@ -126,6 +126,15 @@ pub fn reorder_layers(ordered_ids: Vec<LayerId>, state: State<AppState>) -> Resu
 }
 
 #[tauri::command]
+pub fn create_layer(
+    name: String,
+    color: Rgba8,
+    state: State<AppState>,
+) -> Result<LayerId, laser_app::AppError> {
+    state.with_project_mut(|p| Ok(laser_app::create_layer(p, name, color)))
+}
+
+#[tauri::command]
 pub fn create_layer_from_selection(
     name: String,
     color: Rgba8,

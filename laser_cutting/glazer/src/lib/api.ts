@@ -247,6 +247,11 @@ export async function deleteLayer(layerId: string) {
   return invoke<void>("delete_layer", { layerId });
 }
 
+/** Create a new empty layer (appended at the end of the stack). Returns its id. */
+export async function createLayer(name: string, color: Rgba8) {
+  return invoke<string>("create_layer", { name, color });
+}
+
 export async function updateDisplay(display: DisplaySettings) {
   return invoke<void>("update_display", { display });
 }

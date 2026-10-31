@@ -22,10 +22,16 @@
   let displayUnit = $derived($project?.display.displayUnit ?? "millimeter");
 
   $effect(() => {
+    // Redraw when the canvas element itself is resized (e.g. dragging the
+    // panel dividers) — the backing store is resized from clientWidth/Height
+    // inside draw(), so this does not loop.
+    const ro = canvas ? new ResizeObserver(() => draw()) : null;
+    if (ro && canvas) ro.observe(canvas);
     const un1 = preview.subscribe(() => draw());
     const un2 = selectedIds.subscribe(() => draw());
     const un3 = project.subscribe(() => draw());
     return () => {
+      ro?.disconnect();
       un1();
       un2();
       un3();

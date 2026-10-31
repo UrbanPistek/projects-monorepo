@@ -59,7 +59,8 @@ button.primary {
 
 .main {
   display: grid;
-  grid-template-columns: 1fr 280px 280px;
+  /* Actual widths are set inline by Workbench (resizable dividers). */
+  grid-template-columns: minmax(0, 1fr) 6px 280px 6px 280px;
   min-height: 0;
 }
 
@@ -95,6 +96,10 @@ button.primary {
   text-transform: uppercase;
   color: var(--muted);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .layer-row {
@@ -104,6 +109,32 @@ button.primary {
   align-items: center;
   padding: 6px 10px;
   border-bottom: 1px solid var(--border);
+}
+
+/* Small square icon buttons (V, E, D, arrows) — fixed size, centered glyph. */
+.icon-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.icon-btn.off {
+  opacity: 0.3;
+}
+
+/* Keeps the grid column aligned where a button is intentionally absent. */
+.icon-btn.placeholder {
+  visibility: hidden;
+}
+
+.toolbar .logo {
+  height: 18px;
+  width: 18px;
 }
 
 .swatch {
@@ -148,4 +179,21 @@ canvas.preview.light {
 .layer-row.active {
   background: var(--panel-2);
   box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* Panel resize divider between grid columns (a <button> for a11y). */
+.resizer {
+  cursor: col-resize;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  touch-action: none;
+  user-select: none;
+}
+
+.resizer:hover,
+.resizer:focus-visible {
+  background: var(--accent);
+  border: none;
 }

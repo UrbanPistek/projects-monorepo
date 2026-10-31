@@ -26,8 +26,9 @@
     return [...p.layers].sort((a, b) => a.order - b.order)[0];
   });
 
-  // Frame layers are fixed except passes and speed; their outline scales with
-  // the job-level Scale in the Job section below.
+  // Frame layers are fixed except passes, speed and frame margin; their
+  // outline scales with the job-level Scale in the Job section below.
+  // Locked fields are rendered disabled + dimmed with a lock icon.
   let isFrame = $derived(selectedLayer?.operation === "frame");
 
   async function patch(partial: Partial<ProcessLayer>) {
@@ -46,17 +47,19 @@
   {#if selectedLayer}
     <div class="field muted">
       Layer: <strong>{selectedLayer.name}</strong>
-      {#if isFrame}(frame — fixed except passes &amp; speed){/if}
+      {#if isFrame}(frame — editable: passes, speed, margin; scale follows Job ▸ Scale){/if}
     </div>
-    <label class="field">
+    <label class="field" class:locked={isFrame}>
       <span class="field-title">Name
         <Tip text="Display name of this layer in the panel and in G-code comments. Only affects labelling." />
+        {#if isFrame}<span class="lock">🔒</span>{/if}
       </span>
       <input disabled={isFrame} value={selectedLayer.name} onchange={(e) => patch({ name: e.currentTarget.value })} />
     </label>
-    <label class="field">
+    <label class="field" class:locked={isFrame}>
       <span class="field-title">Operation
         <Tip text="What the laser does for paths on this layer: cut/engrave with the laser on, travel with the laser off, or frame (a dashed outline traced with the laser off). Frame layers are created with the Add frame button and cannot be changed here." />
+        {#if isFrame}<span class="lock">🔒</span>{/if}
       </span>
       <select disabled={isFrame} value={selectedLayer.operation} onchange={(e) => patch({ operation: e.currentTarget.value as ProcessLayer["operation"] })}>
         <option value="cut">Cut</option>
@@ -71,9 +74,10 @@
       </span>
       <input type="number" min="1" value={selectedLayer.speedMmMin} onchange={(e) => patch({ speedMmMin: Number(e.currentTarget.value) })} />
     </label>
-    <label class="field">
+    <label class="field" class:locked={isFrame}>
       <span class="field-title">Power (%)
         <Tip text="Laser duty cycle as a percentage, scaled against the machine Max S (GRBL $30) when exporting. Fixed at 0 for frame layers so the frame never fires the laser." />
+        {#if isFrame}<span class="lock">🔒</span>{/if}
       </span>
       <input type="number" min="0" max="100" disabled={isFrame} value={selectedLayer.powerPercent} onchange={(e) => patch({ powerPercent: Number(e.currentTarget.value) })} />
     </label>
@@ -83,9 +87,10 @@
       </span>
       <input type="number" min="1" value={selectedLayer.passes} onchange={(e) => patch({ passes: Number(e.currentTarget.value) })} />
     </label>
-    <label class="field">
+    <label class="field" class:locked={isFrame}>
       <span class="field-title">Laser mode
         <Tip text="Dynamic (M4) ramps power with speed — good for engraving. Constant (M3) holds power fixed — good for cutting. Fixed for frame layers (laser stays off)." />
+        {#if isFrame}<span class="lock">🔒</span>{/if}
       </span>
       <select disabled={isFrame} value={selectedLayer.laserMode} onchange={(e) => patch({ laserMode: e.currentTarget.value as ProcessLayer["laserMode"] })}>
         <option value="dynamic">Dynamic (M4)</option>
@@ -95,9 +100,9 @@
     {#if isFrame}
       <label class="field">
         <span class="field-title">Frame margin (mm)
-          <Tip text="Distance between the drawing bounds and the frame outline. Fixed at creation (Add frame); the outline scales with the job Scale below." />
+          <Tip text="Distance between the drawing bounds and the frame outline. Editable; the dashed orange frame on the canvas follows this value. The outline scales with the job Scale below." />
         </span>
-        <input type="number" disabled value={selectedLayer.frameMarginMm} />
+        <input type="number" min="0" step="0.5" value={selectedLayer.frameMarginMm} onchange={(e) => patch({ frameMarginMm: Number(e.currentTarget.value) })} />
       </label>
       <div class="field muted">Frame scale follows the job Scale in the Job section below.</div>
     {/if}
@@ -178,5 +183,16 @@
     display: flex;
     align-items: center;
     gap: 5px;
+  }
+  /* Locked (fixed) fields on frame layers: visibly disabled. */
+  .field.locked .field-title {
+    color: var(--muted);
+  }
+  .field.locked input,
+  .field.locked select {
+    opacity: 0.4;
+  }
+  .lock {
+    font-size: 10px;
   }
 </style>
